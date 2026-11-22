@@ -16,7 +16,7 @@
   - 空のテストが1つ通ることを確認する
   - _Requirements: 11.4, 12.2, 12.3, 12.4_
 
-- 🔴 2. core: 型定義とライン生成
+- ✅️ 2. core: 型定義とライン生成
   - `src/core/types.ts` に design.md の Core Interfaces を定義する（`PlayerId`, `PillarPos`, `CellPos`, `Cells`, `Move`, `GameStatus`, `GameState`, `MoveError`, `MoveResult`）
   - `src/core/lines.ts` に `WIN_LINES`（76ライン）を生成する
   - テスト: 総数76、軸方向48・平面斜め24・立体対角線4、各ラインが4マスで、重複がないこと
