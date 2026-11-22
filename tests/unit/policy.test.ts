@@ -62,3 +62,23 @@ describe('要件10.4: 保存するデータは、効果音設定のみ', () => {
     expect(store).toContain("'connect4-3d:settings'");
   });
 });
+
+describe('要件12.1: ゲームのルール（core）は、描画やUIに依存しない', () => {
+  const core = files.filter((f) => f.path.startsWith('core/'));
+
+  it('core のファイルが存在する', () => {
+    expect(core.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('core は、core 内のファイル以外を import しない（react / three / DOM に依存しない）', () => {
+    const imports = core.flatMap((f) =>
+      [...stripComments(f.text).matchAll(/from\s+['"]([^'"]+)['"]/g)].map((m) => ({ file: f.path, from: m[1]! })),
+    );
+    const outside = imports.filter((i) => !i.from.startsWith('./'));
+    expect(outside).toEqual([]);
+  });
+
+  it('core は、ブラウザ固有の API（window / document / navigator）を使わない', () => {
+    expect(core.filter((f) => /\b(window|document|navigator)\b/.test(stripComments(f.text)))).toEqual([]);
+  });
+});
