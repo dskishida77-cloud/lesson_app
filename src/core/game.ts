@@ -82,3 +82,22 @@ export function applyMove(state: GameState, pillar: PillarPos): MoveResult {
   };
   return { ok: true, state: next, move };
 }
+
+/** 直前の1手を取り消す。履歴が空なら、同じ状態を返す */
+export function undo(state: GameState): GameState {
+  const last = state.history[state.history.length - 1];
+  if (!last) return state;
+  const { x, y, z } = last.landed;
+  const cells = state.cells.map((row, xi) =>
+    row.map((column, zi) =>
+      xi === x && zi === z ? column.map((c, yi) => (yi === y ? null : c)) : column.slice(),
+    ),
+  );
+  return {
+    cells,
+    current: last.player,
+    history: state.history.slice(0, -1),
+    // 着手できたのは「進行中」の状態だけなので、取り消し後は必ず進行中に戻る
+    status: { kind: 'playing' },
+  };
+}
