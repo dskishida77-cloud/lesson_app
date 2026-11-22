@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { AudioService } from '../audio/AudioService';
 import type { PillarPos } from '../core';
 import { BoardScene } from '../render/BoardScene';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
@@ -7,6 +8,7 @@ import { Toast } from '../ui/Toast';
 import { ControlBar } from '../ui/ControlBar';
 import { Hud } from '../ui/Hud';
 import { StartScreen } from '../ui/StartScreen';
+import { SettingsStore } from './SettingsStore';
 import { useGame } from './useGame';
 import { useToast } from './useToast';
 
@@ -18,7 +20,24 @@ export function App() {
   const [started, setStarted] = useState(false);
   const [resetSignal, setResetSignal] = useState(0);
   const [confirmingNewGame, setConfirmingNewGame] = useState(false);
+  const audio = useMemo(() => new AudioService(), []);
+  const settings = useMemo(() => new SettingsStore(), []);
+  const [soundEnabled, setSoundEnabled] = useState(() => settings.load().soundEnabled);
+  useEffect(() => audio.setEnabled(soundEnabled), [audio, soundEnabled]);
   const inProgress = state.history.length > 0 && state.status.kind === 'playing';
+
+  const toggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    settings.save({ soundEnabled: next });
+  };
+
+  /** 駒が着地したら、着手音を鳴らす。決着した手なら、続けて勝利音を鳴らす */
+  const handleDropFinished = () => {
+    onDropFinished();
+    audio.playDrop();
+    if (state.status.kind === 'won') audio.playWin();
+  };
 
   if (!started) {
     return (
@@ -39,6 +58,8 @@ export function App() {
         onUndo={undo}
         onNewGame={() => (inProgress ? setConfirmingNewGame(true) : restart(false))}
         onResetCamera={() => setResetSignal((n) => n + 1)}
+        soundEnabled={soundEnabled}
+        onToggleSound={toggleSound}
       />
       <main className="board">
         <BoardScene
@@ -50,7 +71,7 @@ export function App() {
           hovered={hovered}
           resetSignal={resetSignal}
           animating={isAnimating}
-          onDropFinished={onDropFinished}
+          onDropFinished={handleDropFinished}
         />
       </main>
       <Toast message={toast.message} />

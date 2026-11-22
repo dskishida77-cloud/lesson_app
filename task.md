@@ -119,7 +119,7 @@
 ## Phase 3: 付加機能
 効果音、演出、チュートリアル。
 
-- 🔴 17. AudioService と SettingsStore
+- ✅️ 17. AudioService と SettingsStore
   - `src/audio/AudioService.ts`: Web Audio API で、着手音と勝利音を合成する（音源ファイルは使わない）
   - 最初のユーザー操作で `AudioContext` を開始する。非対応時は無音で継続する
   - `src/app/SettingsStore.ts`: `localStorage` のキー `connect4-3d:settings` に `soundEnabled` を保存する。アクセス不可でも例外にしない

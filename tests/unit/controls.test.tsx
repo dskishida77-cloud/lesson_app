@@ -7,8 +7,8 @@ afterEach(cleanup);
 
 describe('ControlBar', () => {
   const setup = (canUndo = true) => {
-    const handlers = { onUndo: vi.fn(), onNewGame: vi.fn(), onResetCamera: vi.fn() };
-    render(<ControlBar canUndo={canUndo} {...handlers} />);
+    const handlers = { onUndo: vi.fn(), onNewGame: vi.fn(), onResetCamera: vi.fn(), onToggleSound: vi.fn() };
+    render(<ControlBar canUndo={canUndo} soundEnabled {...handlers} />);
     return handlers;
   };
 
@@ -20,6 +20,15 @@ describe('ControlBar', () => {
     expect(h.onUndo).toHaveBeenCalledTimes(1);
     expect(h.onNewGame).toHaveBeenCalledTimes(1);
     expect(h.onResetCamera).toHaveBeenCalledTimes(1);
+  });
+
+  it('効果音ボタンは、状態を表示し、切り替えを通知する', () => {
+    const h = setup();
+    const button = screen.getByRole('button', { name: /効果音/ });
+    expect(button.textContent).toContain('オン');
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(button);
+    expect(h.onToggleSound).toHaveBeenCalledTimes(1);
   });
 
   it('取り消せない状態では、「1手戻す」が無効になる', () => {
