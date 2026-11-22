@@ -2,10 +2,8 @@ import { useFrame } from '@react-three/fiber';
 import { useRef } from 'react';
 import type { Group } from 'three';
 import type { CellPos, PlayerId } from '../core';
+import { PLAYER_COLORS } from './colors';
 import { DISC_RADIUS, PILLAR_HEIGHT, cellToWorld } from './layout';
-
-/** 先手(0)は赤、後手(1)は黄。色だけに頼らず、形（丸い駒 / 平らな円盤）でも区別する */
-export const PLAYER_COLORS: Record<PlayerId, string> = { 0: '#d6342c', 1: '#f2c230' };
 
 /** 強調表示の種類: 直前の手 / 勝利ライン */
 export type DiscHighlight = 'last' | 'win';

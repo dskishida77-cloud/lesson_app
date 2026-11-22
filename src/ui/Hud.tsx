@@ -1,5 +1,5 @@
 import type { GameState, PlayerId, Score } from '../core';
-import { PLAYER_COLORS } from '../render/Disc';
+import { PLAYER_COLORS } from '../render/colors';
 
 interface HudProps {
   state: GameState;

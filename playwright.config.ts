@@ -24,10 +24,18 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'desktop', use: { viewport: { width: 1280, height: 720 } } },
+    { name: 'desktop', testIgnore: /performance/, use: { viewport: { width: 1280, height: 720 } } },
     {
       name: 'mobile',
+      testIgnore: /performance/,
       use: { viewport: { width: 360, height: 640 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 },
+    },
+    {
+      // フレームレートの計測は、他のテストと CPU を奪い合うと値が下がるため、他がすべて終わってから単独で実行する
+      name: 'performance',
+      testMatch: /performance/,
+      dependencies: ['desktop', 'mobile'],
+      use: { viewport: { width: 1280, height: 720 } },
     },
   ],
   webServer: {

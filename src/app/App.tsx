@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { AudioService } from '../audio/AudioService';
 import type { PillarPos } from '../core';
-import { BoardScene } from '../render/BoardScene';
+import { BoardScene, preloadBoardScene } from '../render/lazyBoardScene';
 import { Celebration } from '../ui/Celebration';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { ResultDialog } from '../ui/ResultDialog';
@@ -25,6 +25,7 @@ export function App() {
   const [resetSignal, setResetSignal] = useState(0);
   const [confirmingNewGame, setConfirmingNewGame] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  useEffect(preloadBoardScene, []);
   const audio = useMemo(() => new AudioService(), []);
   const settings = useMemo(() => new SettingsStore(), []);
   const [soundEnabled, setSoundEnabled] = useState(() => settings.load().soundEnabled);
@@ -70,6 +71,7 @@ export function App() {
         />
       </div>
       <main className="board">
+        <Suspense fallback={<p className="loading" role="status">盤面を読み込み中…</p>}>
         <BoardScene
           state={state}
           onSelect={(pillar) => {
@@ -82,6 +84,7 @@ export function App() {
           animating={isAnimating}
           onDropFinished={handleDropFinished}
         />
+        </Suspense>
       </main>
       <Celebration active={state.status.kind === 'won' && !isAnimating} reducedMotion={reducedMotion} />
       <Toast message={toast.message} />

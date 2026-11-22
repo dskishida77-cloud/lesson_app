@@ -100,3 +100,5 @@ button.primary { background: #2f5fb3; border-color: #2f5fb3; color: #fff; font-w
   .control-bar { grid-template-columns: repeat(2, 1fr); }
   .toast { top: 16px; }
 }
+
+.loading { margin: 0; padding: 24px 16px; color: #4a5568; }
