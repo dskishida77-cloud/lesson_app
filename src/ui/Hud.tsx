@@ -4,6 +4,8 @@ import { PLAYER_COLORS } from '../render/Disc';
 interface HudProps {
   state: GameState;
   names: [string, string];
+  /** 結果の表示可否。駒の落下アニメーションが終わるまでは false にする */
+  showResult?: boolean;
 }
 
 /** 色に加えて形でも区別する（先手: 丸、後手: 輪） */
@@ -28,8 +30,8 @@ function resultText(state: GameState, names: [string, string]): string | null {
   }
 }
 
-export function Hud({ state, names }: HudProps) {
-  const result = resultText(state, names);
+export function Hud({ state, names, showResult = true }: HudProps) {
+  const result = showResult ? resultText(state, names) : null;
   return (
     <header className="hud">
       <p className="hud-turn">

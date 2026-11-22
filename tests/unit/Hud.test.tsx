@@ -37,6 +37,12 @@ describe('Hud', () => {
     expect(screen.getByRole('status').textContent).toContain('あやの勝ち');
   });
 
+  it('showResult が false の間は、結果を表示しない', () => {
+    const won = play(createGame(0), p(0, 0), p(1, 0), p(0, 0), p(1, 0), p(0, 0), p(1, 0), p(0, 0));
+    render(<Hud state={won} names={names} showResult={false} />);
+    expect(screen.getByRole('status').textContent).toBe('');
+  });
+
   it('引き分けを表示する', () => {
     const draw: GameState = { ...createGame(0), status: { kind: 'draw' } };
     render(<Hud state={draw} names={names} />);

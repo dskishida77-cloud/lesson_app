@@ -13,9 +13,13 @@ interface BoardProps {
   state: GameState;
   onSelect?: (pos: PillarPos) => void;
   onHover?: (pos: PillarPos | null) => void;
+  /** 落下アニメーション中か。中は、直前に置かれた駒を落下させる */
+  animating?: boolean;
+  onDropFinished?: () => void;
 }
 
-function Board({ state, onSelect, onHover }: BoardProps) {
+function Board({ state, onSelect, onHover, animating = false, onDropFinished }: BoardProps) {
+  const lastCell = state.history[state.history.length - 1]?.landed;
   const pillars = Array.from({ length: BOARD_SIZE * BOARD_SIZE }, (_, i) => ({
     x: Math.floor(i / BOARD_SIZE),
     z: i % BOARD_SIZE,
@@ -39,7 +43,13 @@ function Board({ state, onSelect, onHover }: BoardProps) {
         <Pillar key={`${pos.x}-${pos.z}`} pos={pos} onSelect={onSelect} onHover={onHover} />
       ))}
       {discs.map(({ owner, cell }) => (
-        <Disc key={`${cell.x}-${cell.y}-${cell.z}`} owner={owner} cell={cell} />
+        <Disc
+          key={`${cell.x}-${cell.y}-${cell.z}`}
+          owner={owner}
+          cell={cell}
+          animate={animating && lastCell?.x === cell.x && lastCell.y === cell.y && lastCell.z === cell.z}
+          onDropFinished={onDropFinished}
+        />
       ))}
     </group>
   );
@@ -50,9 +60,11 @@ interface BoardSceneProps {
   /** 柱が選択された（移動量の小さいクリック・タップ） */
   onSelect?: (pos: PillarPos) => void;
   onHover?: (pos: PillarPos | null) => void;
+  animating?: boolean;
+  onDropFinished?: () => void;
 }
 
-export function BoardScene({ state, onSelect, onHover }: BoardSceneProps) {
+export function BoardScene({ state, onSelect, onHover, animating, onDropFinished }: BoardSceneProps) {
   if (!isWebGLAvailable()) {
     return (
       <div role="alert" className="webgl-unsupported">
@@ -65,7 +77,13 @@ export function BoardScene({ state, onSelect, onHover }: BoardSceneProps) {
       <color attach="background" args={['#eef2f8']} />
       <ambientLight intensity={0.8} />
       <directionalLight position={[5, 9, 6]} intensity={1.6} castShadow />
-      <Board state={state} onSelect={onSelect} onHover={onHover} />
+      <Board
+        state={state}
+        onSelect={onSelect}
+        onHover={onHover}
+        animating={animating}
+        onDropFinished={onDropFinished}
+      />
       <OrbitControls
         makeDefault
         enablePan={false}

@@ -1,5 +1,8 @@
+import { useFrame } from '@react-three/fiber';
+import { useRef } from 'react';
+import type { Group } from 'three';
 import type { CellPos, PlayerId } from '../core';
-import { DISC_RADIUS, cellToWorld } from './layout';
+import { DISC_RADIUS, PILLAR_HEIGHT, cellToWorld } from './layout';
 
 /** 先手(0)は赤、後手(1)は黄。色だけに頼らず、形（丸い駒 / 平らな円盤）でも区別する */
 export const PLAYER_COLORS: Record<PlayerId, string> = { 0: '#d6342c', 1: '#f2c230' };
@@ -7,21 +10,53 @@ export const PLAYER_COLORS: Record<PlayerId, string> = { 0: '#d6342c', 1: '#f2c2
 interface DiscProps {
   owner: PlayerId;
   cell: CellPos;
+  /** true の場合、柱の上端から落下するアニメーションを再生する（表示開始時のみ有効） */
+  animate?: boolean;
+  onDropFinished?: () => void;
 }
 
-export function Disc({ owner, cell }: DiscProps) {
-  const position = cellToWorld(cell);
+/** 落下にかける時間（秒） */
+const DROP_SECONDS = 0.55;
+
+export function Disc({ owner, cell, animate = false, onDropFinished }: DiscProps) {
+  const target = cellToWorld(cell);
   const color = PLAYER_COLORS[owner];
-  if (owner === 0) {
-    return (
-      <mesh position={position} scale={[1, 0.55, 1]} castShadow>
-        <sphereGeometry args={[DISC_RADIUS, 32, 16]} />
-        <meshStandardMaterial color={color} roughness={0.35} />
-      </mesh>
-    );
-  }
+  const ref = useRef<Group>(null);
+  // 表示開始時の指定だけを見る（後で props が変わっても、再生し直さない）
+  const dropping = useRef(animate);
+  const elapsed = useRef(0);
+  const startY = PILLAR_HEIGHT + 0.6;
+
+  useFrame((_, delta) => {
+    const group = ref.current;
+    if (!group || !dropping.current) return;
+    elapsed.current += delta;
+    const t = Math.min(elapsed.current / DROP_SECONDS, 1);
+    // 重力による加速（二次曲線）
+    group.position.y = startY - (startY - target[1]) * t * t;
+    if (t >= 1) {
+      dropping.current = false;
+      onDropFinished?.();
+    }
+  });
+
   return (
-    <group position={position}>
+    <group ref={ref} position={[target[0], animate ? startY : target[1], target[2]]}>
+      {owner === 0 ? (
+        <mesh scale={[1, 0.55, 1]} castShadow>
+          <sphereGeometry args={[DISC_RADIUS, 32, 16]} />
+          <meshStandardMaterial color={color} roughness={0.35} />
+        </mesh>
+      ) : (
+        <FlatDisc color={color} />
+      )}
+    </group>
+  );
+}
+
+function FlatDisc({ color }: { color: string }) {
+  return (
+    <>
       <mesh castShadow>
         <cylinderGeometry args={[DISC_RADIUS, DISC_RADIUS, 0.4, 32]} />
         <meshStandardMaterial color={color} roughness={0.35} />
@@ -31,6 +66,6 @@ export function Disc({ owner, cell }: DiscProps) {
         <ringGeometry args={[DISC_RADIUS * 0.45, DISC_RADIUS * 0.7, 32]} />
         <meshStandardMaterial color="#9c7a10" roughness={0.6} />
       </mesh>
-    </group>
+    </>
   );
 }

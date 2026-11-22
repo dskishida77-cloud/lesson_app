@@ -3,12 +3,17 @@ import { Hud } from '../ui/Hud';
 import { useGame } from './useGame';
 
 export function App() {
-  const { state, names, selectPillar } = useGame();
+  const { state, names, isAnimating, selectPillar, onDropFinished } = useGame();
   return (
     <div className="app">
-      <Hud state={state} names={names} />
+      <Hud state={state} names={names} showResult={!isAnimating} />
       <main className="board">
-        <BoardScene state={state} onSelect={(pillar) => selectPillar(pillar)} />
+        <BoardScene
+          state={state}
+          onSelect={(pillar) => selectPillar(pillar)}
+          animating={isAnimating}
+          onDropFinished={onDropFinished}
+        />
       </main>
     </div>
   );
