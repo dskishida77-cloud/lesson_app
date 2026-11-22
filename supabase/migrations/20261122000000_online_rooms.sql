@@ -24,6 +24,8 @@ create table if not exists public.rooms (
   host_name    text not null check (char_length(host_name) between 1 and 12),
   guest_name   text check (char_length(guest_name) between 1 and 12),
   first_player smallint not null default 0 check (first_player in (0, 1)),
+  -- round は、再戦のたびに +1 する。(round, 手の数, status) の大小で、クライアントが、行の新旧を決められる
+  round        integer not null default 0,
   moves        smallint[] not null default '{}' check (cardinality(moves) <= 64),
   status       text not null default 'waiting' check (status in ('waiting', 'playing', 'won', 'draw')),
   winner       smallint check (winner in (0, 1)),
@@ -33,6 +35,8 @@ create table if not exists public.rooms (
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
 );
+
+alter table public.rooms add column if not exists round integer not null default 0;
 
 create index if not exists rooms_host_id_idx on public.rooms (host_id);
 create index if not exists rooms_guest_id_idx on public.rooms (guest_id);
@@ -328,7 +332,7 @@ begin
   if v_room.status not in ('won', 'draw') then raise exception 'GAME_NOT_FINISHED'; end if;
 
   update public.rooms
-     set first_player = 1 - first_player, moves = '{}', status = 'playing', winner = null, updated_at = now()
+     set first_player = 1 - first_player, round = round + 1, moves = '{}', status = 'playing', winner = null, updated_at = now()
    where id = v_room.id
    returning * into v_room;
   return v_room;

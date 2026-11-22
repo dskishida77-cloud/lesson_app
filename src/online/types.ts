@@ -10,6 +10,8 @@ export interface RoomRow {
   guest_name: string | null;
   /** 先手の席（0 = ホスト, 1 = ゲスト） */
   first_player: 0 | 1;
+  /** 再戦のたびに +1 される。(round, 手の数, status) で、行の新旧を決める */
+  round: number;
   /** 打たれた柱の番号（x * 4 + z）を、打った順に並べたもの */
   moves: number[];
   status: 'waiting' | 'playing' | 'won' | 'draw';

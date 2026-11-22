@@ -96,6 +96,7 @@ export function parseRoomRow(value: unknown): RoomRow {
     host_name: hostName,
     guest_name: str('guest_name'),
     first_player: first,
+    round: num('round') ?? 0,
     moves: moves as number[],
     status,
     winner,

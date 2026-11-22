@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildInviteUrl, parseInviteCode } from '../../src/online/inviteLink';
 import {
-  indexToPillar, isValidCode, normalizeCode, pillarToIndex, playerIdOfSeat, replayMoves, rowToView, seatOf,
+  indexToPillar, isNewerRow, isValidCode, normalizeCode, pillarToIndex, playerIdOfSeat, replayMoves, rowToView, seatOf,
 } from '../../src/online/roomLogic';
 import { ROOM_KEY, RoomStore } from '../../src/online/RoomStore';
 import type { RoomRow } from '../../src/online/types';
@@ -17,6 +17,7 @@ const room = (patch: Partial<RoomRow> = {}): RoomRow => ({
   host_name: 'あや',
   guest_name: 'ゆう',
   first_player: 0,
+  round: 0,
   moves: [],
   status: 'playing',
   winner: null,
@@ -139,6 +140,26 @@ describe('rowToView', () => {
       error: 'INVALID_HISTORY',
     });
     expect(rowToView(room({ moves: [0], status: 'won' }), HOST)).toEqual({ ok: false, error: 'INVALID_HISTORY' });
+  });
+});
+
+describe('isNewerRow（行の新旧）', () => {
+  it('round → 手の数 → status の段階の順に比べ、より大きい場合だけ新しい', () => {
+    const base = room({ moves: [1, 2], status: 'playing' });
+    expect(isNewerRow(room({ moves: [1, 2, 3] }), base)).toBe(true);
+    expect(isNewerRow(room({ moves: [1] }), base)).toBe(false);
+    expect(isNewerRow(base, base)).toBe(false);
+    // 同じ手の数でも、決着（won）は、進行中より新しい
+    expect(isNewerRow(room({ moves: [1, 2], status: 'won' }), base)).toBe(true);
+    expect(isNewerRow(base, room({ moves: [1, 2], status: 'won' }))).toBe(false);
+    // 待機中 → 進行中（参加）
+    expect(isNewerRow(room({ moves: [], status: 'playing' }), room({ moves: [], status: 'waiting' }))).toBe(true);
+  });
+  it('再戦（round が増える）は、手の数が少なくても、新しい', () => {
+    const ended = room({ round: 0, moves: [0, 1, 0, 1, 0, 1, 0], status: 'won' });
+    const rematch = room({ round: 1, moves: [], status: 'playing', first_player: 1 });
+    expect(isNewerRow(rematch, ended)).toBe(true);
+    expect(isNewerRow(ended, rematch)).toBe(false);
   });
 });
 

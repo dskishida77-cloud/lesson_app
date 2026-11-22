@@ -239,6 +239,7 @@ create table public.rooms (
   host_name    text not null check (char_length(host_name) between 1 and 12),
   guest_name   text check (char_length(guest_name) between 1 and 12),
   first_player smallint not null default 0 check (first_player in (0, 1)),
+  round        integer not null default 0,                -- 再戦のたびに +1。行の新旧の判定に使う
   moves        smallint[] not null default '{}' check (cardinality(moves) <= 64),
   status       text not null default 'waiting' check (status in ('waiting', 'playing', 'won', 'draw')),
   winner       smallint check (winner in (0, 1)),          -- 勝者の席
@@ -275,7 +276,7 @@ alter publication supabase_realtime add table public.rooms;   -- Realtime
 | `create_room(p_name text)` | ルームを作成（コードを生成。衝突したら再試行）。ホストの席 0 | `INVALID_NAME` |
 | `join_room(p_code text, p_name text)` | コードを正規化（大文字化・trim）して参加。すでに自分が参加者なら、そのまま返す（復帰）。参加が揃うと、`status = 'playing'` | `INVALID_NAME`, `ROOM_NOT_FOUND`, `ROOM_FULL` |
 | `play_move(p_room_id uuid, p_pillar smallint)` | 行をロック（`for update`）し、参加者・進行中・手番・柱の範囲・満杯を検証。`moves` に追加し、勝敗を判定して、`status` / `winner` / 成績を更新 | `NOT_A_PLAYER`, `GAME_NOT_PLAYING`, `NOT_YOUR_TURN`, `INVALID_PILLAR`, `PILLAR_FULL` |
-| `rematch(p_room_id uuid)` | 決着後のみ。参加者なら誰でも可。`first_player` を反転し、`moves` を空にして、`status = 'playing'` に戻す（成績は保持） | `NOT_A_PLAYER`, `GAME_NOT_FINISHED` |
+| `rematch(p_room_id uuid)` | 決着後のみ。参加者なら誰でも可。`first_player` を反転し、`round` を +1 し、`moves` を空にして、`status = 'playing'` に戻す（成績は保持） | `NOT_A_PLAYER`, `GAME_NOT_FINISHED` |
 
 返り値は、すべて更新後の `rooms` の行。クライアントは、これで即座に画面を更新する。
 
@@ -338,7 +339,7 @@ export interface OnlineView {
 **状態機械（`useOnlineGame`）:** `idle`（ロビー）→ `creating` / `joining` → `waiting`（ホストの待機）→ `playing` → `ended` →（再戦で）`playing`。どの状態からも `error`（メッセージつき）へ、`leave()` で `idle` へ遷移する。
 
 **同期の規則:**
-- 行（`RoomRow`）を受け取ったとき、`moves` の長さが、手元より短い、または同じなら無視する（RPC の返り値と Realtime の重複、順序の逆転への対策）。再戦で `moves` が短くなる場合だけは、`first_player` / `status` の変化で判別して受け入れる。
+- 行（`RoomRow`）を受け取ったとき、`(round, moves の長さ, status の段階)` を、手元の行と比べ、**より大きい場合だけ**受け入れる（RPC の返り値と Realtime の重複、順序の逆転への対策）。status の段階は、waiting < playing < 決着（won / draw）。`updated_at` は、経路によって文字列の形式が違うため、新旧の判定には使わない。
 - 手が**ちょうど1手**増えたときだけ、落下アニメーションを再生する。それ以外（復帰時の同期など）は、アニメーションなしで、最新の盤面にする。
 - 着手: 自分の手番でなければ、送信せずに「相手の手番です」を通知する。送信中は、二重送信を防ぐ。
 - 再接続: チャンネルが `SUBSCRIBED` に戻ったら、`getRoom` で最新の行を取得して、同期する。

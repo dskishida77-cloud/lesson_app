@@ -89,3 +89,19 @@ export function rowToView(row: RoomRow, userId: string): ViewResult {
     },
   };
 }
+
+const STAGE: Record<RoomRow['status'], number> = { waiting: 0, playing: 1, won: 2, draw: 2 };
+
+/**
+ * next が、current より新しい行か。(round, 手の数, status の段階) を、辞書順で比べる。
+ * RPC の返り値と Realtime の通知が、重複したり、順序が逆転したりしても、古い行で上書きしないために使う。
+ * （updated_at は、経路によって文字列の形式が違うため、使わない）
+ */
+export function isNewerRow(next: RoomRow, current: RoomRow): boolean {
+  const a = [next.round, next.moves.length, STAGE[next.status]] as const;
+  const b = [current.round, current.moves.length, STAGE[current.status]] as const;
+  for (let i = 0; i < 3; i++) {
+    if (a[i]! !== b[i]!) return a[i]! > b[i]!;
+  }
+  return false;
+}

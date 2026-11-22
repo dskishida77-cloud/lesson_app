@@ -14,6 +14,7 @@ const rawRow = (patch: Record<string, unknown> = {}) => ({
   host_name: 'あや',
   guest_name: null,
   first_player: 0,
+  round: 0,
   moves: [],
   status: 'waiting',
   winner: null,

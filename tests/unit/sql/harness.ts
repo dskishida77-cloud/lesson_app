@@ -29,6 +29,7 @@ export interface Room {
   host_name: string;
   guest_name: string | null;
   first_player: number;
+  round: number;
   moves: number[];
   status: 'waiting' | 'playing' | 'won' | 'draw';
   winner: number | null;

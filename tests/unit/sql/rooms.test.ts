@@ -42,6 +42,7 @@ describe('create_room', () => {
     expect(room.guest_id).toBeNull();
     expect(room.host_name).toBe('あや');
     expect(room.first_player).toBe(0);
+    expect(room.round).toBe(0);
     expect(room.moves).toEqual([]);
     expect(room.code).toMatch(/^[A-HJKMNP-Z2-9]{6}$/);
     expect(room.code).not.toMatch(/[01OIL]/);
@@ -268,6 +269,7 @@ describe('rematch', () => {
     const next = await bob().rematch(done.id);
     expect(next.status).toBe('playing');
     expect(next.first_player).toBe(1);
+    expect(next.round).toBe(1);
     expect(next.moves).toEqual([]);
     expect(next.winner).toBeNull();
     expect(next.host_wins).toBe(1);
@@ -290,6 +292,7 @@ describe('rematch', () => {
     expect(won.guest_wins).toBe(1);
     const third = await alice().rematch(done.id);
     expect(third.first_player).toBe(0);
+    expect(third.round).toBe(2);
   });
 
   it('進行中や待機中は GAME_NOT_FINISHED', async () => {

@@ -211,7 +211,7 @@
   - 注: 実装前に、supabase-js の現行ドキュメント（匿名認証・Realtime）を確認する
   - _Requirements: 14.5, 15.3, 17.1, 17.2, 17.4, 18.1, 19.4_
 
-- 🔴 30. useOnlineGame（状態機械）
+- ✅️ 30. useOnlineGame（状態機械）
   - `idle → creating/joining → waiting → playing → ended → playing（再戦）`、`error`、`leave`
   - 同期の規則: 古い・重複した行の無視、ちょうど1手増えたときだけアニメーション、再接続時の `getRoom` による同期
   - 着手: 相手の手番は送信せず通知、送信中の二重送信の防止、送信失敗の通知
