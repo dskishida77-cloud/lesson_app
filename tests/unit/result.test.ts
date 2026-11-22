@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { applyMove, checkResult, createGame } from '../../src/core/game';
 import { WIN_LINES } from '../../src/core/lines';
 import type { CellPos, Cells, GameState, PillarPos, PlayerId } from '../../src/core/types';
+import { DRAW_LAYOUT } from '../fixtures/drawLayout';
 
 const emptyCells = (): Cells =>
   Array.from({ length: 4 }, () => Array.from({ length: 4 }, () => Array<PlayerId | null>(4).fill(null)));
@@ -70,17 +71,7 @@ describe('checkResult: 同時成立', () => {
   });
 });
 
-/**
- * 4連続が存在しない、先手(0)・後手(1)が32個ずつの最終配置。
- * 添字は x*4+z、文字列は下の段(y=0)から上の段(y=3)への持ち主。
- * 探索で求めた配置で、交互に重力どおり打って再現できることを下のテストで確認する。
- */
-const DRAW_LAYOUT = [
-  '0100', '0001', '1110', '0110',
-  '0111', '0101', '1000', '0001',
-  '1110', '1100', '0001', '1110',
-  '1001', '0110', '1011', '1010',
-];
+
 const ownerAt = (x: number, y: number, z: number): PlayerId =>
   (DRAW_LAYOUT[x * 4 + z]![y] === '1' ? 1 : 0);
 

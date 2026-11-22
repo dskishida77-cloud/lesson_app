@@ -3,7 +3,8 @@ import { Canvas } from '@react-three/fiber';
 import { useEffect } from 'react';
 import { BOARD_SIZE } from '../core';
 import type { CellPos, GameState, PillarPos } from '../core';
-import { CameraRig, INITIAL_CAMERA_POSITION, INITIAL_TARGET } from './CameraRig';
+import { CAMERA_FOV, INITIAL_CAMERA_POSITION, INITIAL_TARGET } from './camera';
+import { CameraRig } from './CameraRig';
 import { Disc } from './Disc';
 import type { DiscHighlight } from './Disc';
 import { Pillar } from './Pillar';
@@ -114,7 +115,7 @@ export function BoardScene({
     );
   }
   return (
-    <Canvas shadows camera={{ position: INITIAL_CAMERA_POSITION, fov: 45 }}>
+    <Canvas shadows camera={{ position: INITIAL_CAMERA_POSITION, fov: CAMERA_FOV }}>
       <color attach="background" args={['#eef2f8']} />
       <ambientLight intensity={0.8} />
       <directionalLight position={[5, 9, 6]} intensity={1.6} castShadow />

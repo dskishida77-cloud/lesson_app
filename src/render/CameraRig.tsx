@@ -2,8 +2,7 @@ import { useThree } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 
-export const INITIAL_CAMERA_POSITION: [number, number, number] = [6.5, 6, 8];
-export const INITIAL_TARGET: [number, number, number] = [0, 1.2, 0];
+import { INITIAL_CAMERA_POSITION, INITIAL_TARGET } from './camera';
 
 /** resetSignal が増えるたびに、カメラを初期の視点へ戻す */
 export function CameraRig({ resetSignal }: { resetSignal: number }) {
