@@ -1,5 +1,5 @@
-import type { GameState, PlayerId, Score } from '../core';
-import { PLAYER_COLORS } from '../render/colors';
+import type { GameState, Score } from '../core';
+import { PlayerMark } from './PlayerMark';
 
 interface HudProps {
   state: GameState;
@@ -7,17 +7,6 @@ interface HudProps {
   /** 結果の表示可否。駒の落下アニメーションが終わるまでは false にする */
   showResult?: boolean;
   score?: Score;
-}
-
-/** 色に加えて形でも区別する（先手: 丸、後手: 輪） */
-function PlayerMark({ player }: { player: PlayerId }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={player === 0 ? 'mark mark-round' : 'mark mark-ring'}
-      style={{ background: PLAYER_COLORS[player] }}
-    />
-  );
 }
 
 function resultText(state: GameState, names: [string, string]): string | null {
