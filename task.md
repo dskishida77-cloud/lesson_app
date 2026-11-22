@@ -174,7 +174,7 @@
 招待リンクで友人と対戦できるようにする。ルールの検証はサーバー（SQL の関数）で行う。詳細は design.md の「Online Play」を参照。
 ライブラリは、`@supabase/supabase-js`（実行時）と `@electric-sql/pglite`（開発用のみ）を追加する（ユーザー合意済み）。
 
-- 🔴 25. オンライン対戦の環境準備
+- ✅️ 25. オンライン対戦の環境準備
   - `@supabase/supabase-js`（^2）と、開発用の `@electric-sql/pglite` を追加する（ロックファイルで固定）
   - `.env.example`（`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`）を作成し、`.env.local` などを `.gitignore` に追加する
   - `src/online/config.ts`: 環境変数を読み、`isOnlineConfigured()` を提供する（未設定なら false）
