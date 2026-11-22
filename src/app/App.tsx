@@ -57,16 +57,18 @@ export function App() {
 
   return (
     <div className="app">
-      <Hud state={state} names={names} showResult={!isAnimating} score={score} />
-      <ControlBar
-        canUndo={state.history.length > 0 && !isAnimating}
-        onUndo={undo}
-        onNewGame={() => (inProgress ? setConfirmingNewGame(true) : restart(false))}
-        onResetCamera={() => setResetSignal((n) => n + 1)}
-        soundEnabled={soundEnabled}
-        onToggleSound={toggleSound}
-        onOpenHelp={() => setHelpOpen(true)}
-      />
+      <div className="panel">
+        <Hud state={state} names={names} showResult={!isAnimating} score={score} />
+        <ControlBar
+          canUndo={state.history.length > 0 && !isAnimating}
+          onUndo={undo}
+          onNewGame={() => (inProgress ? setConfirmingNewGame(true) : restart(false))}
+          onResetCamera={() => setResetSignal((n) => n + 1)}
+          soundEnabled={soundEnabled}
+          onToggleSound={toggleSound}
+          onOpenHelp={() => setHelpOpen(true)}
+        />
+      </div>
       <main className="board">
         <BoardScene
           state={state}

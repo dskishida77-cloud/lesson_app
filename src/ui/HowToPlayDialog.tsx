@@ -42,7 +42,7 @@ export function HowToPlayDialog({ onClose }: HowToPlayDialogProps) {
           <p className="note">図は、各段を真上から見た4×4のマスです。赤い丸が、勝ちとなる4つの駒の位置です。</p>
         </section>
         <div className="dialog-actions">
-          <button type="button" className="primary" onClick={onClose}>閉じる</button>
+          <button type="button" className="primary" autoFocus onClick={onClose}>閉じる</button>
         </div>
       </div>
     </div>

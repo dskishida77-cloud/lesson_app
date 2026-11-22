@@ -21,7 +21,8 @@ export function ConfirmDialog({ message, confirmLabel, onConfirm, onCancel }: Co
       <div role="dialog" aria-modal="true" aria-label="確認" className="dialog">
         <p>{message}</p>
         <div className="dialog-actions">
-          <button type="button" onClick={onCancel}>キャンセル</button>
+          {/* 誤操作を避けるため、破棄しない側（キャンセル）に最初のフォーカスを置く */}
+          <button type="button" autoFocus onClick={onCancel}>キャンセル</button>
           <button type="button" className="primary" onClick={onConfirm}>{confirmLabel}</button>
         </div>
       </div>

@@ -48,6 +48,11 @@ describe('HowToPlayDialog', () => {
     expect(within(dialog).getByRole('button', { name: '閉じる' })).toBeTruthy();
   });
 
+  it('開いたとき、閉じるボタンにフォーカスが当たる', () => {
+    render(<HowToPlayDialog onClose={() => {}} />);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '閉じる' }));
+  });
+
   it('閉じるボタンと Escape キーで閉じる', () => {
     const onClose = vi.fn();
     render(<HowToPlayDialog onClose={onClose} />);

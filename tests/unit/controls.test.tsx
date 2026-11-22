@@ -51,6 +51,11 @@ describe('ConfirmDialog', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
+  it('開いたとき、キャンセルにフォーカスが当たる（キーボード操作で誤って破棄しない）', () => {
+    render(<ConfirmDialog message="m" confirmLabel="破棄する" onConfirm={() => {}} onCancel={() => {}} />);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'キャンセル' }));
+  });
+
   it('Escape キーでキャンセルできる', () => {
     const onCancel = vi.fn();
     render(<ConfirmDialog message="m" confirmLabel="OK" onConfirm={() => {}} onCancel={onCancel} />);
