@@ -203,7 +203,7 @@
   - `RoomStore.ts`: 参加中のルーム ID の保存・読込（保存先が使えなくても例外にしない）
   - _Requirements: 14.3, 14.4, 15.1, 15.4, 16.4, 17.3, 19.4_
 
-- 🔴 29. Supabase の通信層（SupabaseRoomApi）
+- ✅️ 29. Supabase の通信層（SupabaseRoomApi）
   - `supabaseClient.ts`: `createClient(url, publishableKey)`（匿名セッションを保存・自動更新）
   - `SupabaseRoomApi`: `RoomApi` を実装する。RPC のエラーメッセージを `RoomErrorCode` に変換し、通信失敗は `NETWORK` とする
   - Realtime: `postgres_changes`（`id=eq.<roomId>`）の購読と、チャンネル状態 → `ConnectionState` の変換
