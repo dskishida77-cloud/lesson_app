@@ -1,9 +1,5 @@
 import { createRoot } from 'react-dom/client';
-import { createGame } from './core';
-import { BoardScene } from './render/BoardScene';
+import { App } from './app/App';
+import './styles/app.css';
 
-createRoot(document.getElementById('root')!).render(
-  <div style={{ width: '100vw', height: '100vh' }}>
-    <BoardScene state={createGame(0)} />
-  </div>,
-);
+createRoot(document.getElementById('root')!).render(<App />);
