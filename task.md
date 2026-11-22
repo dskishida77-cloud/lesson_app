@@ -180,7 +180,7 @@
   - `src/online/config.ts`: 環境変数を読み、`isOnlineConfigured()` を提供する（未設定なら false）
   - _Requirements: 13.2, 18.1, 19.2_
 
-- 🔴 26. データベースのマイグレーション（SQL）
+- ✅️ 26. データベースのマイグレーション（SQL）
   - `supabase/migrations/20261122000000_online_rooms.sql` を作成する
   - `public.rooms`（制約つき）、RLS（参加者のみ SELECT）、権限（直接の書き込みを与えない）、Realtime の publication
   - `game_private` スキーマ: `cells_from_moves`, `is_win`（13方向の連続数）
@@ -188,7 +188,7 @@
   - 注: SQL Editor での実行は、ユーザー作業（Phase 5 の最後に案内する）
   - _Requirements: 14.1, 14.4, 14.5, 14.6, 14.7, 15.1, 15.2, 16.1, 16.3, 18.2, 18.3, 18.4, 18.5, 19.1_
 
-- 🔴 27. SQL の自動テスト（PGlite）
+- ✅️ 27. SQL の自動テスト（PGlite）
   - テスト用の代用品（`auth.uid()`、`anon` / `authenticated` ロール、`request.jwt.claim.sub` によるユーザー切替）を用意する
   - 勝敗判定: `core` の `WIN_LINES`（全76ライン）がすべて勝ちになること。3連続・混在は勝ちにならないこと
   - `play_move` / `join_room` / `rematch` の正常系と、各エラー（手番、満杯、範囲外、終了後、満員、不存在、コードの正規化、再参加）
