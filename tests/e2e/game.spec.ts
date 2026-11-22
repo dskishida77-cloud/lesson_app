@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { drawSequence, pillar, playMoves, selectPillar, startGame, WIN_SEQUENCE } from './helpers';
+import { drawSequence, openLocalSetup, pillar, playMoves, selectPillar, startGame, WIN_SEQUENCE } from './helpers';
 
 test.describe('対戦の流れ', () => {
   test('柱を選ぶと駒が置かれ、手番が切り替わる', async ({ page, hasTouch }) => {
@@ -102,7 +102,7 @@ test.describe('操作', () => {
   });
 
   test('プレイヤー名と先手を、開始前に設定できる', async ({ page }) => {
-    await page.goto('/');
+    await openLocalSetup(page);
     await page.getByLabel('プレイヤー1の名前').fill('あや');
     await page.getByLabel('プレイヤー2の名前').fill('ゆう');
     await page.getByLabel('プレイヤー2が先手').check();
@@ -125,8 +125,29 @@ test.describe('操作', () => {
     await page.getByRole('button', { name: '効果音: オン' }).click();
     await expect(page.getByRole('button', { name: '効果音: オフ' })).toBeVisible();
     await page.reload();
+    await page.getByRole('button', { name: 'ローカル対戦' }).click();
     await page.getByRole('button', { name: 'ゲーム開始' }).click();
     await expect(page.getByRole('button', { name: '効果音: オフ' })).toBeVisible();
+  });
+});
+
+test.describe('モード選択', () => {
+  test('最初にモードを選ぶ。接続設定がなければ、オンライン対戦は選べず、ローカル対戦は遊べる', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByRole('button', { name: 'ローカル対戦' })).toBeEnabled();
+    // E2E のビルドには、Supabase の接続設定を入れていない
+    await expect(page.getByRole('button', { name: 'オンライン対戦' })).toBeDisabled();
+    await expect(page.getByText(/設定されていないため/)).toBeVisible();
+  });
+
+  test('対局中のメニューへの戻りは、確認が出て、承諾するとモード選択に戻る', async ({ page, hasTouch }) => {
+    await startGame(page);
+    await playMoves(page, [pillar(0, 0)], hasTouch);
+    await page.getByRole('button', { name: 'メニューへ' }).click();
+    const dialog = page.getByRole('dialog', { name: '確認' });
+    await expect(dialog).toContainText('メニューへ戻りますか');
+    await dialog.getByRole('button', { name: 'メニューへ戻る' }).click();
+    await expect(page.getByRole('button', { name: 'ローカル対戦' })).toBeVisible();
   });
 });
 
@@ -161,7 +182,7 @@ test.describe('3D表示に対応していない環境', () => {
         return original.call(this, type as '2d', ...rest);
       } as typeof original;
     });
-    await page.goto('/');
+    await openLocalSetup(page);
     await page.getByRole('button', { name: 'ゲーム開始' }).click();
     await expect(page.getByRole('alert')).toContainText('3D表示（WebGL）が利用できません');
   });

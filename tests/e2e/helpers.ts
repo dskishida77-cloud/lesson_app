@@ -9,9 +9,15 @@ import { DRAW_LAYOUT } from '../fixtures/drawLayout';
 
 export const pillar = (x: number, z: number): PillarPos => ({ x, z });
 
+/** メニューで「ローカル対戦」を選び、設定画面（名前・先手）を開く */
+export async function openLocalSetup(page: Page) {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'ローカル対戦' }).click();
+}
+
 /** 開始画面から、既定の名前でゲームを始める */
 export async function startGame(page: Page) {
-  await page.goto('/');
+  await openLocalSetup(page);
   await page.getByRole('button', { name: 'ゲーム開始' }).click();
   await expect(page.locator('canvas')).toBeVisible();
   await waitForCanvasSized(page);

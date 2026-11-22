@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { pillar, playMoves, startGame, WIN_SEQUENCE } from './helpers';
+import { openLocalSetup, pillar, playMoves, startGame, WIN_SEQUENCE } from './helpers';
 
 test.describe('セキュリティ・プライバシー（要件10）', () => {
   test('1局を通して遊んでも、通信は自分のサイトだけで、CSP違反も起きない', async ({ page, baseURL, hasTouch }) => {
@@ -54,7 +54,7 @@ test.describe('セキュリティ・プライバシー（要件10）', () => {
       dialogOpened = true;
       await d.dismiss();
     });
-    await page.goto('/');
+    await openLocalSetup(page);
     const payload = '<img src=x onerror=alert(1)>';
     await page.getByLabel('プレイヤー1の名前').fill(payload);
     await page.getByRole('button', { name: 'ゲーム開始' }).click();

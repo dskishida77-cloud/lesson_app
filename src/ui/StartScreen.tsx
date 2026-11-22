@@ -5,9 +5,11 @@ import type { PlayerId, PlayerSettings } from '../core';
 
 interface StartScreenProps {
   onStart: (settings: PlayerSettings) => void;
+  /** モード選択へ戻る */
+  onBack?: () => void;
 }
 
-export function StartScreen({ onStart }: StartScreenProps) {
+export function StartScreen({ onStart, onBack }: StartScreenProps) {
   const [names, setNames] = useState<[string, string]>(['', '']);
   const [first, setFirst] = useState<PlayerId>(0);
 
@@ -51,6 +53,7 @@ export function StartScreen({ onStart }: StartScreenProps) {
         ))}
       </fieldset>
       <button type="submit" className="primary">ゲーム開始</button>
+      {onBack && <button type="button" onClick={onBack}>メニューへ戻る</button>}
     </form>
   );
 }

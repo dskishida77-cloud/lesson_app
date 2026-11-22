@@ -26,7 +26,7 @@ const averageFps = (page: import('@playwright/test').Page, ms: number) =>
 test('初回表示: 開始画面が、数秒以内に操作できる', async ({ page }) => {
   const t0 = Date.now();
   await page.goto('/');
-  await page.getByRole('button', { name: 'ゲーム開始' }).waitFor();
+  await page.getByRole('button', { name: 'ローカル対戦' }).waitFor();
   const elapsed = Date.now() - t0;
   console.info(`開始画面の表示まで: ${elapsed} ms`);
   expect(elapsed).toBeLessThan(MAX_FIRST_PAINT_MS);

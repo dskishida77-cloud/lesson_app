@@ -42,6 +42,7 @@ import { SETTINGS_KEY } from '../../src/app/SettingsStore';
 
 /** 開始して、遅延読み込みされる盤面（代用品）が表示されるまで待つ */
 const start = async () => {
+  fireEvent.click(screen.getByRole('button', { name: 'ローカル対戦' }));
   fireEvent.click(screen.getByRole('button', { name: 'ゲーム開始' }));
   await screen.findByRole('button', { name: '柱0' });
 };
@@ -122,5 +123,36 @@ describe('App', () => {
     // 閉じた後も、続けて打てる
     press('柱1');
     expect(screen.getByText(/手数/).textContent).toContain('2');
+  });
+
+  it('モード選択: オンライン対戦は、接続設定がなければ、無効になる', () => {
+    render(<App />);
+    expect((screen.getByRole('button', { name: 'オンライン対戦' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('ローカルの設定画面から、メニューへ戻れる', () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'ローカル対戦' }));
+    press('メニューへ戻る');
+    expect(screen.getByRole('button', { name: 'ローカル対戦' })).toBeTruthy();
+  });
+
+  it('ローカルの対局中に「メニューへ」を押すと、確認が出る。未着手なら、そのまま戻る', async () => {
+    render(<App />);
+    await start();
+    press('メニューへ');
+    expect(screen.getByRole('button', { name: 'ローカル対戦' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'ローカル対戦' }));
+    fireEvent.click(screen.getByRole('button', { name: 'ゲーム開始' }));
+    await screen.findByRole('button', { name: '柱0' });
+    press('柱0');
+    press('メニューへ');
+    expect(screen.getByRole('dialog', { name: '確認' }).textContent).toContain('メニューへ戻りますか');
+    press('キャンセル');
+    expect(screen.getByText(/手数/).textContent).toContain('1');
+    press('メニューへ');
+    press('メニューへ戻る');
+    expect(screen.getByRole('button', { name: 'オンライン対戦' })).toBeTruthy();
   });
 });
