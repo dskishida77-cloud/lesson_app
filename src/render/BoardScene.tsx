@@ -2,6 +2,7 @@ import { OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { BOARD_SIZE } from '../core';
 import type { CellPos, GameState, PillarPos } from '../core';
+import { CameraRig, INITIAL_CAMERA_POSITION, INITIAL_TARGET } from './CameraRig';
 import { Disc } from './Disc';
 import type { DiscHighlight } from './Disc';
 import { Pillar } from './Pillar';
@@ -75,9 +76,19 @@ interface BoardSceneProps {
   animating?: boolean;
   onDropFinished?: () => void;
   hovered?: PillarPos | null;
+  /** この値が増えるたびに、視点を初期状態へ戻す */
+  resetSignal?: number;
 }
 
-export function BoardScene({ state, onSelect, onHover, animating, onDropFinished, hovered }: BoardSceneProps) {
+export function BoardScene({
+  state,
+  onSelect,
+  onHover,
+  animating,
+  onDropFinished,
+  hovered,
+  resetSignal = 0,
+}: BoardSceneProps) {
   if (!isWebGLAvailable()) {
     return (
       <div role="alert" className="webgl-unsupported">
@@ -86,7 +97,7 @@ export function BoardScene({ state, onSelect, onHover, animating, onDropFinished
     );
   }
   return (
-    <Canvas shadows camera={{ position: [6.5, 6, 8], fov: 45 }}>
+    <Canvas shadows camera={{ position: INITIAL_CAMERA_POSITION, fov: 45 }}>
       <color attach="background" args={['#eef2f8']} />
       <ambientLight intensity={0.8} />
       <directionalLight position={[5, 9, 6]} intensity={1.6} castShadow />
@@ -105,8 +116,9 @@ export function BoardScene({ state, onSelect, onHover, animating, onDropFinished
         maxDistance={18}
         minPolarAngle={0.15}
         maxPolarAngle={Math.PI / 2 - 0.05}
-        target={[0, 1.2, 0]}
+        target={INITIAL_TARGET}
       />
+      <CameraRig resetSignal={resetSignal} />
     </Canvas>
   );
 }

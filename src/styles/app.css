@@ -50,3 +50,11 @@ html, body, #root { height: 100%; margin: 0; }
 button { font: inherit; min-height: 44px; padding: 0 16px; border-radius: 8px; border: 1px solid #aab4c5; background: #fff; color: inherit; cursor: pointer; }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 button.primary { background: #2f5fb3; border-color: #2f5fb3; color: #fff; font-weight: 700; }
+
+.control-bar { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 16px; background: #fff; border-bottom: 1px solid #d5dbe6; }
+
+.overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(20, 28, 45, 0.45); z-index: 10; padding: 16px; }
+.dialog { width: 100%; max-width: 360px; padding: 20px; background: #fff; border-radius: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25); }
+.dialog p { margin: 0 0 16px; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.hud-score { font-size: 0.9rem; color: #4a5568; }

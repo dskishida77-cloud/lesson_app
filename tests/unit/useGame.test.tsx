@@ -119,4 +119,73 @@ describe('useGame', () => {
     });
     expect(result.current.score).toEqual({ wins: [0, 0], draws: 0 });
   });
+
+  describe('undo', () => {
+    it('1手取り消して、手番を戻す。最初の状態でも安全', () => {
+      const { result } = renderHook(() => useGame());
+      act(() => result.current.undo());
+      expect(result.current.state.history).toHaveLength(0);
+      playMove(result, p(0, 0));
+      playMove(result, p(1, 1));
+      act(() => result.current.undo());
+      expect(result.current.state.history).toHaveLength(1);
+      expect(result.current.state.current).toBe(1);
+      act(() => result.current.undo());
+      expect(result.current.state.history).toHaveLength(0);
+      expect(result.current.state.current).toBe(0);
+    });
+
+    it('落下アニメーション中は、取り消せない', () => {
+      const { result } = renderHook(() => useGame());
+      act(() => {
+        result.current.selectPillar(p(0, 0));
+      });
+      act(() => result.current.undo());
+      expect(result.current.state.history).toHaveLength(1);
+    });
+
+    it('決着した手を取り消すと、通算成績も元に戻り、再び打てる', () => {
+      const { result } = renderHook(() => useGame());
+      for (const m of [p(0, 0), p(1, 0), p(0, 0), p(1, 0), p(0, 0), p(1, 0), p(0, 0)]) playMove(result, m);
+      expect(result.current.score.wins).toEqual([1, 0]);
+      act(() => result.current.undo());
+      expect(result.current.score).toEqual({ wins: [0, 0], draws: 0 });
+      expect(result.current.state.status.kind).toBe('playing');
+      playMove(result, p(0, 0));
+      expect(result.current.score.wins).toEqual([1, 0]);
+    });
+  });
+
+  describe('restart', () => {
+    it('盤面を初期化し、名前と通算成績は保持する', () => {
+      const { result } = renderHook(() => useGame());
+      act(() => result.current.startGame({ names: ['あや', 'ゆう'], firstPlayer: 0 }));
+      for (const m of [p(0, 0), p(1, 0), p(0, 0), p(1, 0), p(0, 0), p(1, 0), p(0, 0)]) playMove(result, m);
+      act(() => result.current.restart(false));
+      expect(result.current.state.history).toHaveLength(0);
+      expect(result.current.state.current).toBe(0);
+      expect(result.current.names).toEqual(['あや', 'ゆう']);
+      expect(result.current.score.wins).toEqual([1, 0]);
+    });
+
+    it('swapFirst が true なら、先手と後手を入れ替える', () => {
+      const { result } = renderHook(() => useGame());
+      playMove(result, p(0, 0));
+      act(() => result.current.restart(true));
+      expect(result.current.state.current).toBe(1);
+      // さらに入れ替えると元に戻る
+      act(() => result.current.restart(true));
+      expect(result.current.state.current).toBe(0);
+    });
+
+    it('アニメーション中でも初期化でき、入力ロックも解除される', () => {
+      const { result } = renderHook(() => useGame());
+      act(() => {
+        result.current.selectPillar(p(0, 0));
+      });
+      act(() => result.current.restart(false));
+      expect(result.current.isAnimating).toBe(false);
+      expect(result.current.state.history).toHaveLength(0);
+    });
+  });
 });
