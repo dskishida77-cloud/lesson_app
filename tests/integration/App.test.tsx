@@ -102,4 +102,19 @@ describe('App', () => {
     press('キャンセル');
     expect(screen.getByText(/手数/).textContent).toContain('1');
   });
+
+  it('ゲーム進行中に「遊び方」を開閉しても、盤面と手番は変わらない', () => {
+    render(<App />);
+    start();
+    press('柱0');
+    const before = [screen.getByText(/手番/).textContent, screen.getByText(/手数/).textContent];
+    press('遊び方');
+    expect(screen.getByRole('dialog', { name: '遊び方' })).toBeTruthy();
+    press('閉じる');
+    expect(screen.queryByRole('dialog', { name: '遊び方' })).toBeNull();
+    expect([screen.getByText(/手番/).textContent, screen.getByText(/手数/).textContent]).toEqual(before);
+    // 閉じた後も、続けて打てる
+    press('柱1');
+    expect(screen.getByText(/手数/).textContent).toContain('2');
+  });
 });

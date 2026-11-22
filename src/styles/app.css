@@ -72,3 +72,14 @@ button.primary { background: #2f5fb3; border-color: #2f5fb3; color: #fff; font-w
 @media (prefers-reduced-motion: reduce) {
   .confetti { display: none; }
 }
+
+.dialog-wide { max-width: 560px; max-height: calc(100vh - 32px); overflow-y: auto; }
+.dialog h2 { margin: 0 0 12px; font-size: 1.3rem; }
+.dialog h3 { margin: 16px 0 6px; font-size: 1rem; }
+.dialog section p { margin: 0 0 8px; line-height: 1.6; }
+.pattern-list { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 14px; }
+.pattern-list li { display: grid; gap: 4px; }
+.pattern-list li span { font-size: 0.9rem; color: #4a5568; }
+.pattern-levels { display: flex; flex-wrap: wrap; gap: 8px; }
+.pattern-level { margin: 0; text-align: center; font-size: 0.75rem; color: #4a5568; }
+.note { font-size: 0.85rem; color: #4a5568; }

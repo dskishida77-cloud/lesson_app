@@ -7,7 +7,7 @@ afterEach(cleanup);
 
 describe('ControlBar', () => {
   const setup = (canUndo = true) => {
-    const handlers = { onUndo: vi.fn(), onNewGame: vi.fn(), onResetCamera: vi.fn(), onToggleSound: vi.fn() };
+    const handlers = { onUndo: vi.fn(), onNewGame: vi.fn(), onResetCamera: vi.fn(), onToggleSound: vi.fn(), onOpenHelp: vi.fn() };
     render(<ControlBar canUndo={canUndo} soundEnabled {...handlers} />);
     return handlers;
   };
@@ -17,6 +17,8 @@ describe('ControlBar', () => {
     fireEvent.click(screen.getByRole('button', { name: '1手戻す' }));
     fireEvent.click(screen.getByRole('button', { name: '新しいゲーム' }));
     fireEvent.click(screen.getByRole('button', { name: '視点リセット' }));
+    fireEvent.click(screen.getByRole('button', { name: '遊び方' }));
+    expect(h.onOpenHelp).toHaveBeenCalledTimes(1);
     expect(h.onUndo).toHaveBeenCalledTimes(1);
     expect(h.onNewGame).toHaveBeenCalledTimes(1);
     expect(h.onResetCamera).toHaveBeenCalledTimes(1);

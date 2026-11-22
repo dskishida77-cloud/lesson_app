@@ -7,6 +7,7 @@ import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { ResultDialog } from '../ui/ResultDialog';
 import { Toast } from '../ui/Toast';
 import { ControlBar } from '../ui/ControlBar';
+import { HowToPlayDialog } from '../ui/HowToPlayDialog';
 import { Hud } from '../ui/Hud';
 import { StartScreen } from '../ui/StartScreen';
 import { SettingsStore } from './SettingsStore';
@@ -23,6 +24,7 @@ export function App() {
   const [started, setStarted] = useState(false);
   const [resetSignal, setResetSignal] = useState(0);
   const [confirmingNewGame, setConfirmingNewGame] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const audio = useMemo(() => new AudioService(), []);
   const settings = useMemo(() => new SettingsStore(), []);
   const [soundEnabled, setSoundEnabled] = useState(() => settings.load().soundEnabled);
@@ -63,6 +65,7 @@ export function App() {
         onResetCamera={() => setResetSignal((n) => n + 1)}
         soundEnabled={soundEnabled}
         onToggleSound={toggleSound}
+        onOpenHelp={() => setHelpOpen(true)}
       />
       <main className="board">
         <BoardScene
@@ -81,6 +84,7 @@ export function App() {
       <Celebration active={state.status.kind === 'won' && !isAnimating} reducedMotion={reducedMotion} />
       <Toast message={toast.message} />
       {!isAnimating && <ResultDialog status={state.status} names={names} onPlayAgain={restart} />}
+      {helpOpen && <HowToPlayDialog onClose={() => setHelpOpen(false)} />}
       {confirmingNewGame && (
         <ConfirmDialog
           message="進行中のゲームを破棄して、最初から始めますか？"
