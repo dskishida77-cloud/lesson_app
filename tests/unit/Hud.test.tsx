@@ -49,6 +49,16 @@ describe('Hud', () => {
     expect(screen.getByRole('status').textContent).toContain('引き分け');
   });
 
+  it('通算成績（勝ち数と引き分け数）を表示する', () => {
+    render(<Hud state={createGame(0)} names={names} score={{ wins: [2, 1], draws: 3 }} />);
+    const score = screen.getByLabelText('通算成績').textContent!;
+    expect(score).toContain('あや');
+    expect(score).toContain('2勝');
+    expect(score).toContain('ゆう');
+    expect(score).toContain('1勝');
+    expect(score).toContain('引き分け3');
+  });
+
   it('プレイヤー名は、HTMLとして解釈されない', () => {
     render(<Hud state={createGame(0)} names={['<img src=x onerror=alert(1)>', 'b']} />);
     expect(document.querySelector('img')).toBeNull();

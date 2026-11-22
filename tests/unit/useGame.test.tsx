@@ -97,4 +97,26 @@ describe('useGame', () => {
     expect(result.current.state.history).toHaveLength(0);
     expect(result.current.isAnimating).toBe(false);
   });
+
+  it('決着すると、通算成績が1回だけ加算される', () => {
+    const { result } = renderHook(() => useGame());
+    expect(result.current.score).toEqual({ wins: [0, 0], draws: 0 });
+    for (const m of [p(0, 0), p(1, 0), p(0, 0), p(1, 0), p(0, 0), p(1, 0), p(0, 0)]) playMove(result, m);
+    expect(result.current.score).toEqual({ wins: [1, 0], draws: 0 });
+    // 終了後の入力や、完了通知の重複では、加算されない
+    act(() => {
+      result.current.selectPillar(p(2, 2));
+      result.current.onDropFinished();
+    });
+    expect(result.current.score).toEqual({ wins: [1, 0], draws: 0 });
+  });
+
+  it('startGame で、通算成績はリセットされる', () => {
+    const { result } = renderHook(() => useGame());
+    for (const m of [p(0, 0), p(1, 0), p(0, 0), p(1, 0), p(0, 0), p(1, 0), p(0, 0)]) playMove(result, m);
+    act(() => {
+      result.current.startGame({ names: ['a', 'b'], firstPlayer: 0 });
+    });
+    expect(result.current.score).toEqual({ wins: [0, 0], draws: 0 });
+  });
 });

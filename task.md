@@ -105,7 +105,7 @@
   - テスト: `useGame` の `restart(swapFirst)` と `undo`
   - _Requirements: 1.4, 5.1, 5.2, 5.3, 5.4_
 
-- 🔴 15. 通算成績
+- ✅️ 15. 通算成績
   - `src/app/ScoreBoard.ts`: `record` / `reset`（メモリ保持）
   - HUD に、各プレイヤーの勝ち数と引き分け数を表示する
   - 終了時に、1回だけ更新されること（二重加算の防止）をテストする

@@ -6,7 +6,7 @@ import { StartScreen } from '../ui/StartScreen';
 import { useGame } from './useGame';
 
 export function App() {
-  const { state, names, isAnimating, startGame, selectPillar, onDropFinished } = useGame();
+  const { state, names, score, isAnimating, startGame, selectPillar, onDropFinished } = useGame();
   const [hovered, setHovered] = useState<PillarPos | null>(null);
   const [started, setStarted] = useState(false);
 
@@ -23,7 +23,7 @@ export function App() {
 
   return (
     <div className="app">
-      <Hud state={state} names={names} showResult={!isAnimating} />
+      <Hud state={state} names={names} showResult={!isAnimating} score={score} />
       <main className="board">
         <BoardScene
           state={state}

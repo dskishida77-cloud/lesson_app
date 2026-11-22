@@ -1,6 +1,7 @@
 import { useCallback, useReducer, useRef } from 'react';
 import { applyMove, createGame } from '../core';
-import type { GameState, MoveError, PillarPos, PlayerSettings } from '../core';
+import type { GameState, MoveError, PillarPos, PlayerSettings, Score } from '../core';
+import { emptyScore, recordResult } from './ScoreBoard';
 
 export { DEFAULT_NAMES } from './defaults';
 import { DEFAULT_NAMES } from './defaults';
@@ -8,6 +9,7 @@ import { DEFAULT_NAMES } from './defaults';
 interface GameModel {
   game: GameState;
   names: [string, string];
+  score: Score;
   /** 駒の落下アニメーション中か（中は入力を受け付けない） */
   animating: boolean;
 }
@@ -26,23 +28,32 @@ export function reducer(model: GameModel, action: Action): GameModel {
       return {
         game: createGame(action.settings.firstPlayer),
         names: action.settings.names,
+        score: emptyScore(),
         animating: false,
       };
     case 'move': {
       if (model.animating) return model;
       const result = applyMove(model.game, action.pillar);
-      return result.ok ? { ...model, game: result.state, animating: true } : model;
+      if (!result.ok) return model;
+      // 決着した手のときだけ、成績を加算する（終了後は着手できないので、二重に加算されない）
+      return {
+        ...model,
+        game: result.state,
+        score: recordResult(model.score, result.state.status),
+        animating: true,
+      };
     }
     case 'dropFinished':
       return model.animating ? { ...model, animating: false } : model;
   }
 }
 
-const initialModel = (): GameModel => ({ game: createGame(0), names: DEFAULT_NAMES, animating: false });
+const initialModel = (): GameModel => ({ game: createGame(0), names: DEFAULT_NAMES, score: emptyScore(), animating: false });
 
 export interface UseGame {
   state: GameState;
   names: [string, string];
+  score: Score;
   isAnimating: boolean;
   startGame: (settings: PlayerSettings) => void;
   /** 柱へ駒を落とす。失敗した場合はその理由を返し、成功なら null を返す */
@@ -80,6 +91,7 @@ export function useGame(): UseGame {
   return {
     state: model.game,
     names: model.names,
+    score: model.score,
     isAnimating: model.animating,
     startGame,
     selectPillar,
