@@ -234,7 +234,7 @@
   - 結合テスト（偽の `RoomApi`）: ロビー → 待機 → 対局 → 決着 → 再戦
   - _Requirements: 13.1, 13.3, 14.3, 15.3, 15.6, 16.2, 16.3, 16.4_
 
-- 🔴 33. CSP と方針テストの更新
+- ✅️ 33. CSP と方針テストの更新
   - `vite.config.ts`: `VITE_SUPABASE_URL` から、ホスト名を取り出して、`connect-src` に追加する（未設定なら `'self'` のみ）
   - `tests/unit/policy.test.ts`: 通信・保存先の API を使ってよい場所を、`src/online/` と `SettingsStore` に限定する。`service_role` / `secret` の文字列を禁止する。`.env.local` が `.gitignore` に含まれることを確認する
   - 既存の E2E（セキュリティ）が、引き続き通ること
