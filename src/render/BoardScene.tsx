@@ -1,5 +1,6 @@
 import { OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
+import { useEffect } from 'react';
 import { BOARD_SIZE } from '../core';
 import type { CellPos, GameState, PillarPos } from '../core';
 import { CameraRig, INITIAL_CAMERA_POSITION, INITIAL_TARGET } from './CameraRig';
@@ -21,9 +22,23 @@ interface BoardProps {
   onDropFinished?: () => void;
   /** ポインタを重ねている柱（駒のプレビュー用） */
   hovered?: PillarPos | null;
+  /** 「視覚効果を減らす」設定。落下アニメーションを省き、すぐに着地させる */
+  reducedMotion?: boolean;
 }
 
-function Board({ state, onSelect, onHover, animating = false, onDropFinished, hovered = null }: BoardProps) {
+function Board({
+  state,
+  onSelect,
+  onHover,
+  animating = false,
+  onDropFinished,
+  hovered = null,
+  reducedMotion = false,
+}: BoardProps) {
+  useEffect(() => {
+    if (animating && reducedMotion) onDropFinished?.();
+  }, [animating, reducedMotion, onDropFinished]);
+
   const lastCell = state.history[state.history.length - 1]?.landed;
   const isLast = (c: CellPos) => lastCell?.x === c.x && lastCell.y === c.y && lastCell.z === c.z;
   // 勝利ラインは、落下アニメーションが終わってから強調する
@@ -59,7 +74,7 @@ function Board({ state, onSelect, onHover, animating = false, onDropFinished, ho
           owner={owner}
           cell={cell}
           highlight={highlightOf(cell)}
-          animate={animating && isLast(cell)}
+          animate={animating && !reducedMotion && isLast(cell)}
           onDropFinished={onDropFinished}
         />
       ))}
@@ -78,6 +93,7 @@ interface BoardSceneProps {
   hovered?: PillarPos | null;
   /** この値が増えるたびに、視点を初期状態へ戻す */
   resetSignal?: number;
+  reducedMotion?: boolean;
 }
 
 export function BoardScene({
@@ -88,6 +104,7 @@ export function BoardScene({
   onDropFinished,
   hovered,
   resetSignal = 0,
+  reducedMotion = false,
 }: BoardSceneProps) {
   if (!isWebGLAvailable()) {
     return (
@@ -108,6 +125,7 @@ export function BoardScene({
         animating={animating}
         onDropFinished={onDropFinished}
         hovered={hovered}
+        reducedMotion={reducedMotion}
       />
       <OrbitControls
         makeDefault

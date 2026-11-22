@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AudioService } from '../audio/AudioService';
 import type { PillarPos } from '../core';
 import { BoardScene } from '../render/BoardScene';
+import { Celebration } from '../ui/Celebration';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { ResultDialog } from '../ui/ResultDialog';
 import { Toast } from '../ui/Toast';
@@ -10,6 +11,7 @@ import { Hud } from '../ui/Hud';
 import { StartScreen } from '../ui/StartScreen';
 import { SettingsStore } from './SettingsStore';
 import { useGame } from './useGame';
+import { usePrefersReducedMotion } from './usePrefersReducedMotion';
 import { useToast } from './useToast';
 
 export function App() {
@@ -17,6 +19,7 @@ export function App() {
     useGame();
   const [hovered, setHovered] = useState<PillarPos | null>(null);
   const toast = useToast();
+  const reducedMotion = usePrefersReducedMotion();
   const [started, setStarted] = useState(false);
   const [resetSignal, setResetSignal] = useState(0);
   const [confirmingNewGame, setConfirmingNewGame] = useState(false);
@@ -70,10 +73,12 @@ export function App() {
           onHover={setHovered}
           hovered={hovered}
           resetSignal={resetSignal}
+          reducedMotion={reducedMotion}
           animating={isAnimating}
           onDropFinished={handleDropFinished}
         />
       </main>
+      <Celebration active={state.status.kind === 'won' && !isAnimating} reducedMotion={reducedMotion} />
       <Toast message={toast.message} />
       {!isAnimating && <ResultDialog status={state.status} names={names} onPlayAgain={restart} />}
       {confirmingNewGame && (

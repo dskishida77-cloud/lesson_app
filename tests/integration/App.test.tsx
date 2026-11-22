@@ -69,7 +69,9 @@ describe('App', () => {
     for (const name of ['柱0', '柱1', '柱0', '柱1', '柱0', '柱1', '柱0']) press(name);
     expect(audioSpy.playWin).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('dialog', { name: '対局結果' }).textContent).toContain('プレイヤー1の勝ち');
+    expect(document.querySelector('.confetti')).not.toBeNull();
     press('もう一度遊ぶ');
+    expect(document.querySelector('.confetti')).toBeNull();
     expect(screen.queryByRole('dialog', { name: '対局結果' })).toBeNull();
     expect(screen.getByLabelText('通算成績').textContent).toContain('プレイヤー1 1勝');
   });
