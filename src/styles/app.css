@@ -58,3 +58,8 @@ button.primary { background: #2f5fb3; border-color: #2f5fb3; color: #fff; font-w
 .dialog p { margin: 0 0 16px; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .hud-score { font-size: 0.9rem; color: #4a5568; }
+
+.toast { position: fixed; left: 50%; top: 96px; transform: translateX(-50%); padding: 10px 18px; background: #1c2330; color: #fff; border-radius: 999px; z-index: 20; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
+
+.result-dialog { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 16px; width: calc(100% - 32px); max-width: 480px; padding: 14px 18px; background: #fff; border-radius: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25); z-index: 5; }
+.result-title { margin: 0; font-size: 1.2rem; font-weight: 700; }

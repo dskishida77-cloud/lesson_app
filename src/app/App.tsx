@@ -2,15 +2,19 @@ import { useState } from 'react';
 import type { PillarPos } from '../core';
 import { BoardScene } from '../render/BoardScene';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { ResultDialog } from '../ui/ResultDialog';
+import { Toast } from '../ui/Toast';
 import { ControlBar } from '../ui/ControlBar';
 import { Hud } from '../ui/Hud';
 import { StartScreen } from '../ui/StartScreen';
 import { useGame } from './useGame';
+import { useToast } from './useToast';
 
 export function App() {
   const { state, names, score, isAnimating, startGame, selectPillar, undo, restart, onDropFinished } =
     useGame();
   const [hovered, setHovered] = useState<PillarPos | null>(null);
+  const toast = useToast();
   const [started, setStarted] = useState(false);
   const [resetSignal, setResetSignal] = useState(0);
   const [confirmingNewGame, setConfirmingNewGame] = useState(false);
@@ -39,7 +43,9 @@ export function App() {
       <main className="board">
         <BoardScene
           state={state}
-          onSelect={(pillar) => selectPillar(pillar)}
+          onSelect={(pillar) => {
+            if (selectPillar(pillar) === 'PILLAR_FULL') toast.show('この柱は満杯です');
+          }}
           onHover={setHovered}
           hovered={hovered}
           resetSignal={resetSignal}
@@ -47,6 +53,8 @@ export function App() {
           onDropFinished={onDropFinished}
         />
       </main>
+      <Toast message={toast.message} />
+      {!isAnimating && <ResultDialog status={state.status} names={names} onPlayAgain={restart} />}
       {confirmingNewGame && (
         <ConfirmDialog
           message="進行中のゲームを破棄して、最初から始めますか？"
