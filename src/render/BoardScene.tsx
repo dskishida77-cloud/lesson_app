@@ -1,7 +1,7 @@
 import { OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { BOARD_SIZE } from '../core';
-import type { CellPos, GameState } from '../core';
+import type { CellPos, GameState, PillarPos } from '../core';
 import { Disc } from './Disc';
 import { Pillar } from './Pillar';
 import { BASE_HEIGHT, PILLAR_SPACING } from './layout';
@@ -9,7 +9,13 @@ import { isWebGLAvailable } from './webgl';
 
 const BASE_SIZE = PILLAR_SPACING * (BOARD_SIZE - 1) + 1.4;
 
-function Board({ state }: { state: GameState }) {
+interface BoardProps {
+  state: GameState;
+  onSelect?: (pos: PillarPos) => void;
+  onHover?: (pos: PillarPos | null) => void;
+}
+
+function Board({ state, onSelect, onHover }: BoardProps) {
   const pillars = Array.from({ length: BOARD_SIZE * BOARD_SIZE }, (_, i) => ({
     x: Math.floor(i / BOARD_SIZE),
     z: i % BOARD_SIZE,
@@ -30,7 +36,7 @@ function Board({ state }: { state: GameState }) {
         <meshStandardMaterial color="#2f5fb3" roughness={0.5} />
       </mesh>
       {pillars.map((pos) => (
-        <Pillar key={`${pos.x}-${pos.z}`} pos={pos} />
+        <Pillar key={`${pos.x}-${pos.z}`} pos={pos} onSelect={onSelect} onHover={onHover} />
       ))}
       {discs.map(({ owner, cell }) => (
         <Disc key={`${cell.x}-${cell.y}-${cell.z}`} owner={owner} cell={cell} />
@@ -41,9 +47,12 @@ function Board({ state }: { state: GameState }) {
 
 interface BoardSceneProps {
   state: GameState;
+  /** 柱が選択された（移動量の小さいクリック・タップ） */
+  onSelect?: (pos: PillarPos) => void;
+  onHover?: (pos: PillarPos | null) => void;
 }
 
-export function BoardScene({ state }: BoardSceneProps) {
+export function BoardScene({ state, onSelect, onHover }: BoardSceneProps) {
   if (!isWebGLAvailable()) {
     return (
       <div role="alert" className="webgl-unsupported">
@@ -56,7 +65,7 @@ export function BoardScene({ state }: BoardSceneProps) {
       <color attach="background" args={['#eef2f8']} />
       <ambientLight intensity={0.8} />
       <directionalLight position={[5, 9, 6]} intensity={1.6} castShadow />
-      <Board state={state} />
+      <Board state={state} onSelect={onSelect} onHover={onHover} />
       <OrbitControls
         makeDefault
         enablePan={false}
