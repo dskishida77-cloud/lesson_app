@@ -3,8 +3,10 @@ import { Canvas } from '@react-three/fiber';
 import { BOARD_SIZE } from '../core';
 import type { CellPos, GameState, PillarPos } from '../core';
 import { Disc } from './Disc';
+import type { DiscHighlight } from './Disc';
 import { Pillar } from './Pillar';
 import { BASE_HEIGHT, PILLAR_SPACING } from './layout';
+import { getPreviewCell, isCellInLines } from './preview';
 import { isWebGLAvailable } from './webgl';
 
 const BASE_SIZE = PILLAR_SPACING * (BOARD_SIZE - 1) + 1.4;
@@ -16,10 +18,18 @@ interface BoardProps {
   /** 落下アニメーション中か。中は、直前に置かれた駒を落下させる */
   animating?: boolean;
   onDropFinished?: () => void;
+  /** ポインタを重ねている柱（駒のプレビュー用） */
+  hovered?: PillarPos | null;
 }
 
-function Board({ state, onSelect, onHover, animating = false, onDropFinished }: BoardProps) {
+function Board({ state, onSelect, onHover, animating = false, onDropFinished, hovered = null }: BoardProps) {
   const lastCell = state.history[state.history.length - 1]?.landed;
+  const isLast = (c: CellPos) => lastCell?.x === c.x && lastCell.y === c.y && lastCell.z === c.z;
+  // 勝利ラインは、落下アニメーションが終わってから強調する
+  const winLines = state.status.kind === 'won' && !animating ? state.status.lines : [];
+  const previewCell = animating ? null : getPreviewCell(state, hovered);
+  const highlightOf = (c: CellPos): DiscHighlight | undefined =>
+    isCellInLines(c, winLines) ? 'win' : isLast(c) && !animating ? 'last' : undefined;
   const pillars = Array.from({ length: BOARD_SIZE * BOARD_SIZE }, (_, i) => ({
     x: Math.floor(i / BOARD_SIZE),
     z: i % BOARD_SIZE,
@@ -47,10 +57,12 @@ function Board({ state, onSelect, onHover, animating = false, onDropFinished }: 
           key={`${cell.x}-${cell.y}-${cell.z}`}
           owner={owner}
           cell={cell}
-          animate={animating && lastCell?.x === cell.x && lastCell.y === cell.y && lastCell.z === cell.z}
+          highlight={highlightOf(cell)}
+          animate={animating && isLast(cell)}
           onDropFinished={onDropFinished}
         />
       ))}
+      {previewCell && <Disc key="preview" ghost owner={state.current} cell={previewCell} />}
     </group>
   );
 }
@@ -62,9 +74,10 @@ interface BoardSceneProps {
   onHover?: (pos: PillarPos | null) => void;
   animating?: boolean;
   onDropFinished?: () => void;
+  hovered?: PillarPos | null;
 }
 
-export function BoardScene({ state, onSelect, onHover, animating, onDropFinished }: BoardSceneProps) {
+export function BoardScene({ state, onSelect, onHover, animating, onDropFinished, hovered }: BoardSceneProps) {
   if (!isWebGLAvailable()) {
     return (
       <div role="alert" className="webgl-unsupported">
@@ -83,6 +96,7 @@ export function BoardScene({ state, onSelect, onHover, animating, onDropFinished
         onHover={onHover}
         animating={animating}
         onDropFinished={onDropFinished}
+        hovered={hovered}
       />
       <OrbitControls
         makeDefault
