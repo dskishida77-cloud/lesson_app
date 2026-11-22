@@ -1,5 +1,14 @@
-import { BOARD_SIZE } from './lines';
-import type { Cells, GameState, Move, MoveResult, PillarPos, PlayerId } from './types';
+import { BOARD_SIZE, WIN_LINES } from './lines';
+import type {
+  CellPos,
+  Cells,
+  GameState,
+  GameStatus,
+  Move,
+  MoveResult,
+  PillarPos,
+  PlayerId,
+} from './types';
 
 const createEmptyCells = (): Cells =>
   Array.from({ length: BOARD_SIZE }, () =>
@@ -27,8 +36,27 @@ export function getDropHeight(state: GameState, pillar: PillarPos): number | nul
   return y === -1 ? null : y;
 }
 
+const isSameCell = (a: CellPos, b: CellPos) => a.x === b.x && a.y === b.y && a.z === b.z;
+
+const isFull = (cells: Cells) => cells.every((row) => row.every((column) => column.every((c) => c !== null)));
+
+/** 直近の着手 last を含むラインのみを確認し、勝敗・引き分けを判定する */
+export function checkResult(cells: Cells, last: CellPos): GameStatus {
+  const player = cells[last.x]![last.z]![last.y];
+  if (player === null || player === undefined) return { kind: 'playing' };
+
+  const lines = WIN_LINES.filter(
+    (line) =>
+      line.some((c) => isSameCell(c, last)) && line.every((c) => cells[c.x]![c.z]![c.y] === player),
+  ).map((line) => line.map((c) => ({ ...c })));
+
+  if (lines.length > 0) return { kind: 'won', winner: player, lines };
+  return isFull(cells) ? { kind: 'draw' } : { kind: 'playing' };
+}
+
 /** 指定した柱に、現在の手番の駒を落とす。状態は書き換えず、新しい状態を返す */
 export function applyMove(state: GameState, pillar: PillarPos): MoveResult {
+  if (state.status.kind !== 'playing') return { ok: false, error: 'GAME_OVER' };
   if (!isValidPillar(pillar)) return { ok: false, error: 'OUT_OF_RANGE' };
   const y = getDropHeight(state, pillar);
   if (y === null) return { ok: false, error: 'PILLAR_FULL' };
@@ -44,11 +72,13 @@ export function applyMove(state: GameState, pillar: PillarPos): MoveResult {
     pillar: { x: pillar.x, z: pillar.z },
     landed: { x: pillar.x, y, z: pillar.z },
   };
+  const status = checkResult(cells, move.landed);
   const next: GameState = {
     cells,
-    current: player === 0 ? 1 : 0,
+    // 勝敗が決した場合は、勝者の手番のまま据え置く
+    current: status.kind === 'won' ? player : player === 0 ? 1 : 0,
     history: [...state.history, move],
-    status: state.status,
+    status,
   };
   return { ok: true, state: next, move };
 }
