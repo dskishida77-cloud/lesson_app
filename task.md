@@ -169,3 +169,80 @@
   - `core` が React / three に依存していないことを確認する（将来のオンライン対戦への備え）
   - 全テストをコマンド1つで実行でき、失敗時に原因が分かる出力となること
   - _Requirements: 11.4, 12.1, 12.2, 12.3_
+
+## Phase 5: オンライン対戦（Supabase）
+招待リンクで友人と対戦できるようにする。ルールの検証はサーバー（SQL の関数）で行う。詳細は design.md の「Online Play」を参照。
+ライブラリは、`@supabase/supabase-js`（実行時）と `@electric-sql/pglite`（開発用のみ）を追加する（ユーザー合意済み）。
+
+- 🔴 25. オンライン対戦の環境準備
+  - `@supabase/supabase-js`（^2）と、開発用の `@electric-sql/pglite` を追加する（ロックファイルで固定）
+  - `.env.example`（`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`）を作成し、`.env.local` などを `.gitignore` に追加する
+  - `src/online/config.ts`: 環境変数を読み、`isOnlineConfigured()` を提供する（未設定なら false）
+  - _Requirements: 13.2, 18.1, 19.2_
+
+- 🔴 26. データベースのマイグレーション（SQL）
+  - `supabase/migrations/20261122000000_online_rooms.sql` を作成する
+  - `public.rooms`（制約つき）、RLS（参加者のみ SELECT）、権限（直接の書き込みを与えない）、Realtime の publication
+  - `game_private` スキーマ: `cells_from_moves`, `is_win`（13方向の連続数）
+  - RPC（`security definer`、`set search_path = ''`、`auth.uid()` の確認、`anon` の実行権限なし）: `create_room`, `join_room`, `play_move`, `rematch`
+  - 注: SQL Editor での実行は、ユーザー作業（Phase 5 の最後に案内する）
+  - _Requirements: 14.1, 14.4, 14.5, 14.6, 14.7, 15.1, 15.2, 16.1, 16.3, 18.2, 18.3, 18.4, 18.5, 19.1_
+
+- 🔴 27. SQL の自動テスト（PGlite）
+  - テスト用の代用品（`auth.uid()`、`anon` / `authenticated` ロール、`request.jwt.claim.sub` によるユーザー切替）を用意する
+  - 勝敗判定: `core` の `WIN_LINES`（全76ライン）がすべて勝ちになること。3連続・混在は勝ちにならないこと
+  - `play_move` / `join_room` / `rematch` の正常系と、各エラー（手番、満杯、範囲外、終了後、満員、不存在、コードの正規化、再参加）
+  - 引き分け（`tests/fixtures/drawLayout.ts` の配置）、成績の更新
+  - 権限: 他人のルームは読めない、直接の INSERT/UPDATE/DELETE は拒否、他人は RPC を呼べない、`anon` は実行できない
+  - _Requirements: 15.2, 16.1, 16.3, 16.4, 18.2, 18.3, 18.4, 18.5, 19.3_
+
+- 🔴 28. オンライン対戦の型と純粋ロジック
+  - `src/online/types.ts`: `RoomRow`, `RoomErrorCode`, `ConnectionState`, `RoomApi`, `OnlineView`（design.md のとおり）
+  - `roomLogic.ts`: `rowToView`（`core` で再生。不正な履歴はエラーとして扱う）、席と `PlayerId` の対応、`isMyTurn`、`normalizeCode`、柱の番号の変換
+  - `inviteLink.ts`: `buildInviteUrl` / `parseInviteCode`
+  - `RoomStore.ts`: 参加中のルーム ID の保存・読込（保存先が使えなくても例外にしない）
+  - _Requirements: 14.3, 14.4, 15.1, 15.4, 16.4, 17.3, 19.4_
+
+- 🔴 29. Supabase の通信層（SupabaseRoomApi）
+  - `supabaseClient.ts`: `createClient(url, publishableKey)`（匿名セッションを保存・自動更新）
+  - `SupabaseRoomApi`: `RoomApi` を実装する。RPC のエラーメッセージを `RoomErrorCode` に変換し、通信失敗は `NETWORK` とする
+  - Realtime: `postgres_changes`（`id=eq.<roomId>`）の購読と、チャンネル状態 → `ConnectionState` の変換
+  - テスト: Supabase クライアントを偽物に差し替えて、エラー変換と状態変換を検証する
+  - 注: 実装前に、supabase-js の現行ドキュメント（匿名認証・Realtime）を確認する
+  - _Requirements: 14.5, 15.3, 17.1, 17.2, 17.4, 18.1, 19.4_
+
+- 🔴 30. useOnlineGame（状態機械）
+  - `idle → creating/joining → waiting → playing → ended → playing（再戦）`、`error`、`leave`
+  - 同期の規則: 古い・重複した行の無視、ちょうど1手増えたときだけアニメーション、再接続時の `getRoom` による同期
+  - 着手: 相手の手番は送信せず通知、送信中の二重送信の防止、送信失敗の通知
+  - 再読み込みからの復帰（`RoomStore` + `getRoom`）
+  - テスト: 偽の `RoomApi` で、一連の流れと各異常系を検証する
+  - _Requirements: 14.6, 14.7, 15.1, 15.3, 16.2, 16.3, 17.2, 17.3, 17.4, 17.5_
+
+- 🔴 31. オンライン対戦の画面
+  - `StartScreen`: 「ローカル対戦」「オンライン対戦」の選択（接続設定がなければ、オンラインは無効で理由を表示）
+  - `OnlineLobby`（表示名、ルームを作る、コード入力での参加、`?room=` による入力済み）、`WaitingRoom`（招待リンクのコピー、コード表示、やめる）
+  - `OnlineBar`（自分・相手の名前と駒の見た目、「あなたの番 / 相手の番」、接続状態、ルームを抜ける）
+  - `ControlBar` を `mode="online"` に対応させる（「1手戻す」「新しいゲーム」を隠す）
+  - 表示名は、React の自動エスケープで表示する
+  - _Requirements: 13.1, 13.2, 14.1, 14.2, 14.3, 15.4, 15.5, 15.6, 17.1, 17.5, 18.5_
+
+- 🔴 32. App への統合
+  - 盤面・HUD・ダイアログを、ローカル・オンラインで共有できるよう、対局画面（`GameView`）を切り出す
+  - モードの切替、招待リンク（`?room=`）で開いたときのオンライン参加画面、モード選択への復帰（対局中は確認）
+  - 決着時の結果ダイアログ（オンラインは、「もう一度遊ぶ」で `rematch`）、勝利の強調、効果音
+  - 結合テスト（偽の `RoomApi`）: ロビー → 待機 → 対局 → 決着 → 再戦
+  - _Requirements: 13.1, 13.3, 14.3, 15.3, 15.6, 16.2, 16.3, 16.4_
+
+- 🔴 33. CSP と方針テストの更新
+  - `vite.config.ts`: `VITE_SUPABASE_URL` から、ホスト名を取り出して、`connect-src` に追加する（未設定なら `'self'` のみ）
+  - `tests/unit/policy.test.ts`: 通信・保存先の API を使ってよい場所を、`src/online/` と `SettingsStore` に限定する。`service_role` / `secret` の文字列を禁止する。`.env.local` が `.gitignore` に含まれることを確認する
+  - 既存の E2E（セキュリティ）が、引き続き通ること
+  - _Requirements: 10.1, 10.4, 18.1, 18.6_
+
+- 🔴 34. 実環境での確認とドキュメント
+  - README に、Supabase の設定手順（匿名サインイン、SQL の実行、環境変数、Vercel への設定）と、オンライン対戦の遊び方を追記する
+  - 2つのブラウザで通す E2E（環境変数が設定されている場合のみ実行）を作成する
+  - ユーザー作業（匿名サインインの有効化、SQL の実行、`.env.local`）の後に、実環境で動作を確認する
+  - _Requirements: 14, 15, 16, 17, 19.2, 19.5_
+

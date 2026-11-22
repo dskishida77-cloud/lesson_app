@@ -1,7 +1,7 @@
 # Design Document
 
 ## Overview
-3D コネクト フォーは、React + TypeScript 製のクライアント完結型Webアプリである。ゲームルールを描画から完全に分離した純粋ロジック層（`core`）を中心に、React Three Fiber による3D描画コンポーネント、React によるUIコンポーネント、Web Audio による音声層を、状態管理フック（`useGame`）で結合する構成とする。将来のオンライン対戦に備え、ゲーム状態とコマンドをシリアライズ可能な値として設計する。
+3D コネクト フォーは、React + TypeScript 製のクライアント完結型Webアプリである。ゲームルールを描画から完全に分離した純粋ロジック層（`core`）を中心に、React Three Fiber による3D描画コンポーネント、React によるUIコンポーネント、Web Audio による音声層を、状態管理フック（`useGame`）で結合する構成とする。ゲーム状態とコマンドはシリアライズ可能な値として設計されており、オンライン対戦では、Supabase（匿名認証 + Postgres + Realtime）を使う。手番・重力・勝敗の検証はサーバー（SQL の関数）が行い、クライアントは表示と入力に徹する。詳細は「Online Play」を参照。
 
 ## Technology Stack（ユーザー合意事項。変更する場合は事前に相談すること）
 
@@ -19,7 +19,13 @@
 
 - 状態管理は React 標準（`useReducer` / Context）とし、状態管理ライブラリは追加しない。
 - ルーティングは不要（単一画面）。
-- ランタイム依存は `react`, `react-dom`, `three`, `@react-three/fiber`, `@react-three/drei` とする。
+- ランタイム依存は `react`, `react-dom`, `three`, `@react-three/fiber`, `@react-three/drei`, `@supabase/supabase-js` とする。
+- オンライン対戦のために追加するライブラリ（ユーザー合意済み）:
+
+| 用途 | 採用 | バージョン |
+|---|---|---|
+| Supabase クライアント（認証・RPC・Realtime） | @supabase/supabase-js | ^2（導入時の最新の2系を、ロックファイルで固定） |
+| SQL の自動テスト（開発用のみ） | @electric-sql/pglite | 導入時の最新を、ロックファイルで固定 |
 
 ## Architecture
 
@@ -187,12 +193,184 @@ export interface PersistedSettings { soundEnabled: boolean; }
 - `SettingsStore.load(): PersistedSettings` / `save(s: PersistedSettings): void`
 - `ScoreBoard.record(status: GameStatus): void` / `reset(): void`
 
+## Online Play（オンライン対戦）
+
+### 方針（決定事項）
+| 項目 | 決定 |
+|---|---|
+| 識別 | Supabase の匿名認証（`signInAnonymously`）。端末ごとに `auth.uid()` が割り当てられる |
+| 参加方法 | **招待リンク**（`https://<サイト>/?room=ABC234`）を、ホストが友人へ直接伝える。コードの手入力も可 |
+| ルールの検証 | サーバー（Postgres の関数）。クライアントは、勝敗を申告できない |
+| 同期 | Supabase Realtime（`postgres_changes`）。RPC の返り値でも、即座に反映する |
+| 書き込み | RPC のみ。テーブルへの直接の INSERT / UPDATE / DELETE は、権限を与えない |
+| 読み取り | RLS により、そのルームの参加者（ホスト・ゲスト）のみ |
+| 鍵 | Publishable key のみ（クライアント）。秘密鍵は使わない |
+| 対象外 | 1手戻す（オンライン）、AI対戦、ランダムマッチング、観戦、チャット |
+
+### アーキテクチャ
+```mermaid
+graph TD
+    Host[ホストの端末] -->|RPC: create_room / play_move / rematch| API[Supabase<br/>PostgREST]
+    Guest[ゲストの端末] -->|RPC: join_room / play_move / rematch| API
+    API --> DB[(Postgres<br/>rooms + RLS)]
+    DB -->|postgres_changes<br/>RLS で参加者のみ| RT[Supabase Realtime]
+    RT --> Host
+    RT --> Guest
+    Host -.匿名認証.-> Auth[Supabase Auth]
+    Guest -.匿名認証.-> Auth
+```
+
+クライアント内では、ローカル対戦と同じ `core`・`BoardScene`・`Hud` などを再利用する。オンライン専用なのは、通信層（`src/online/`）と、ロビー画面だけである。
+
+### データモデル（Postgres）
+手の履歴（`moves`）だけを保存し、盤面は、クライアントも `core` で再生して導く（サーバーの判定と同じルールで、同じ結果になることをテストで保証する）。
+
+- **柱の番号** `p = x * 4 + z`（0〜15）。`moves` は、打たれた柱の番号を、順に並べた配列。
+- **席（seat）**: 0 = ホスト、1 = ゲスト。`first_player` は、先手の席。i 手目（0始まり）を打つ席は、`(first_player + i) % 2`。
+- クライアントの `PlayerId`（0 = 先手）と席の対応: `playerId = (seat - first_player + 2) % 2`。
+
+```sql
+-- supabase/migrations/20261122000000_online_rooms.sql（要約。実体はマイグレーションファイル）
+create table public.rooms (
+  id           uuid primary key default gen_random_uuid(),
+  code         text not null unique check (code ~ '^[A-HJ-NP-Z2-9]{6}$'),
+  host_id      uuid not null,
+  guest_id     uuid,
+  host_name    text not null check (char_length(host_name) between 1 and 12),
+  guest_name   text check (char_length(guest_name) between 1 and 12),
+  first_player smallint not null default 0 check (first_player in (0, 1)),
+  moves        smallint[] not null default '{}' check (cardinality(moves) <= 64),
+  status       text not null default 'waiting' check (status in ('waiting', 'playing', 'won', 'draw')),
+  winner       smallint check (winner in (0, 1)),          -- 勝者の席
+  host_wins    integer not null default 0,
+  guest_wins   integer not null default 0,
+  draws        integer not null default 0,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+alter table public.rooms enable row level security;
+
+-- 読み取り: 参加者のみ（匿名ユーザーも authenticated ロールのため、所有者の条件が必須）
+create policy "participants can read" on public.rooms
+  for select to authenticated
+  using ((select auth.uid()) = host_id or (select auth.uid()) = guest_id);
+
+-- 書き込みの権限は与えない（INSERT / UPDATE / DELETE は、RPC のみ）
+revoke all on public.rooms from anon, authenticated;
+grant select on public.rooms to authenticated;
+
+alter publication supabase_realtime add table public.rooms;   -- Realtime
+```
+
+### RPC（`security definer` の関数）
+`security definer` の関数は、公開 API になる（RLS を迂回する）ため、次を必ず守る。
+- `set search_path = ''`、参照は、スキーマ名つきで書く。
+- 関数の先頭で `auth.uid()` を確認する（NULL なら `NOT_AUTHENTICATED`）。
+- `revoke execute ... from public, anon;` のうえで、`grant execute ... to authenticated;`。
+- ロジックの本体（手の適用、勝敗判定）は、公開しない別スキーマ（`game_private`）に置く。
+
+| 関数 | 内容 | 主なエラー（`raise exception` のメッセージ） |
+|---|---|---|
+| `create_room(p_name text)` | ルームを作成（コードを生成。衝突したら再試行）。ホストの席 0 | `INVALID_NAME` |
+| `join_room(p_code text, p_name text)` | コードを正規化（大文字化・trim）して参加。すでに自分が参加者なら、そのまま返す（復帰）。参加が揃うと、`status = 'playing'` | `INVALID_NAME`, `ROOM_NOT_FOUND`, `ROOM_FULL` |
+| `play_move(p_room_id uuid, p_pillar smallint)` | 行をロック（`for update`）し、参加者・進行中・手番・柱の範囲・満杯を検証。`moves` に追加し、勝敗を判定して、`status` / `winner` / 成績を更新 | `NOT_A_PLAYER`, `GAME_NOT_PLAYING`, `NOT_YOUR_TURN`, `INVALID_PILLAR`, `PILLAR_FULL` |
+| `rematch(p_room_id uuid)` | 決着後のみ。参加者なら誰でも可。`first_player` を反転し、`moves` を空にして、`status = 'playing'` に戻す（成績は保持） | `NOT_A_PLAYER`, `GAME_NOT_FINISHED` |
+
+返り値は、すべて更新後の `rooms` の行。クライアントは、これで即座に画面を更新する。
+
+**勝敗判定（`game_private`）:** `cells_from_moves(moves)` で、64マスの配列（添字 `p*4 + y`、値は打った手の偶奇 = 先手側が 0）を作り、直近の着手のマスから、13方向について、前後に同じ値が続く数を数え、合計が 4 以上なら勝ち。64手で勝者なしなら、引き分け。`is_win(cells, last)` を、単体で検証できる関数として公開しない別スキーマに置く。
+
+### クライアントの構成（`src/online/`）
+```ts
+/** サーバーの rooms の1行（スネークケースの列を、そのまま写す） */
+export interface RoomRow {
+  id: string; code: string;
+  host_id: string; guest_id: string | null;
+  host_name: string; guest_name: string | null;
+  first_player: 0 | 1; moves: number[];
+  status: 'waiting' | 'playing' | 'won' | 'draw';
+  winner: 0 | 1 | null;
+  host_wins: number; guest_wins: number; draws: number;
+  updated_at: string;
+}
+
+export type RoomErrorCode =
+  | 'NOT_CONFIGURED' | 'NOT_AUTHENTICATED' | 'INVALID_NAME' | 'ROOM_NOT_FOUND' | 'ROOM_FULL'
+  | 'NOT_A_PLAYER' | 'GAME_NOT_PLAYING' | 'NOT_YOUR_TURN' | 'INVALID_PILLAR' | 'PILLAR_FULL'
+  | 'GAME_NOT_FINISHED' | 'NETWORK' | 'UNKNOWN';
+
+export type ConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
+
+/** 通信層。Supabase 実装と、テスト用の偽実装を差し替えられる */
+export interface RoomApi {
+  /** 現在のユーザー ID（匿名セッションがなければ作る） */
+  ensureUser(): Promise<string>;
+  createRoom(name: string): Promise<RoomRow>;
+  joinRoom(code: string, name: string): Promise<RoomRow>;
+  playMove(roomId: string, pillarIndex: number): Promise<RoomRow>;
+  rematch(roomId: string): Promise<RoomRow>;
+  getRoom(roomId: string): Promise<RoomRow | null>;
+  subscribe(roomId: string, h: { onRow(row: RoomRow): void; onConnection(s: ConnectionState): void }): () => void;
+}
+
+/** 画面が使う形（席や先手の違いを吸収したもの） */
+export interface OnlineView {
+  state: GameState;                  // core で moves を再生した盤面
+  mySeat: 0 | 1;
+  myPlayerId: PlayerId;              // 自分の駒（0 = 先手）
+  names: [string, string];           // PlayerId 順（先手の名前, 後手の名前）
+  score: Score;                      // names と同じ順
+  phase: 'waiting' | 'playing' | 'ended';
+  isMyTurn: boolean;
+}
+```
+
+| モジュール | 責務 |
+|---|---|
+| `supabaseClient.ts` | `createClient(url, publishableKey)`。環境変数がなければ、`null`（`isOnlineConfigured()` が false） |
+| `SupabaseRoomApi.ts` | `RoomApi` の実装。RPC のエラーメッセージを、`RoomErrorCode` に変換する。Realtime のチャンネル状態を、`ConnectionState` に変換する |
+| `roomLogic.ts`（純粋関数） | `rowToView(row, userId)`（`core` で再生。不正な履歴なら例外にせず、エラーとして扱う）、席と `PlayerId` の対応、`normalizeCode`、`toPillarIndex` / `fromPillarIndex` |
+| `inviteLink.ts`（純粋関数） | `buildInviteUrl(origin, code)`、`parseInviteCode(search)` |
+| `RoomStore.ts` | 参加中のルーム ID を、`localStorage`（`connect4-3d:online-room`）に保存・読込（再読み込み後の復帰用） |
+| `useOnlineGame.ts` | 状態機械（下記）。`RoomApi` を受け取る（テストで偽実装を渡せる） |
+
+**状態機械（`useOnlineGame`）:** `idle`（ロビー）→ `creating` / `joining` → `waiting`（ホストの待機）→ `playing` → `ended` →（再戦で）`playing`。どの状態からも `error`（メッセージつき）へ、`leave()` で `idle` へ遷移する。
+
+**同期の規則:**
+- 行（`RoomRow`）を受け取ったとき、`moves` の長さが、手元より短い、または同じなら無視する（RPC の返り値と Realtime の重複、順序の逆転への対策）。再戦で `moves` が短くなる場合だけは、`first_player` / `status` の変化で判別して受け入れる。
+- 手が**ちょうど1手**増えたときだけ、落下アニメーションを再生する。それ以外（復帰時の同期など）は、アニメーションなしで、最新の盤面にする。
+- 着手: 自分の手番でなければ、送信せずに「相手の手番です」を通知する。送信中は、二重送信を防ぐ。
+- 再接続: チャンネルが `SUBSCRIBED` に戻ったら、`getRoom` で最新の行を取得して、同期する。
+
+### UI
+- **開始画面（`StartScreen`）**: 「ローカル対戦」「オンライン対戦」の選択を追加する。接続設定がなければ、オンラインは無効（理由を表示）。
+- **`OnlineLobby`**: 表示名の入力、「ルームを作る」、コード入力での参加。`?room=CODE` つきで開いたときは、コード入力済みの「参加」画面になる。
+- **`WaitingRoom`**: 招待リンクの表示と「招待リンクをコピー」、ルームコード、待機中の表示、「やめる」。
+- **対局画面**: 既存の `Hud` / `BoardScene` / `ResultDialog` / `Toast` / `Celebration` を再利用する。追加するのは、`OnlineBar`（自分・相手の名前と駒の見た目、「あなたの番 / 相手の番」、接続状態、「ルームを抜ける」）。`ControlBar` は、「1手戻す」「新しいゲーム」を隠す（`mode="online"`）。
+- 再戦は、`ResultDialog` の「もう一度遊ぶ」から `rematch` を呼ぶ（先手と後手の入れ替えは、サーバーが自動で行うため、チェックボックスは非表示）。
+
+### 設定とセキュリティ
+- 環境変数: `VITE_SUPABASE_URL`、`VITE_SUPABASE_PUBLISHABLE_KEY`。`.env.local`（Git 管理外）と、Vercel の Environment Variables に設定する。`.env.example` をリポジトリに含める。
+- **CSP**: ビルド時に、`VITE_SUPABASE_URL` から、ホスト名を取り出して、`connect-src 'self' https://<ref>.supabase.co wss://<ref>.supabase.co` とする。環境変数がなければ、従来どおり `'self'` のみ。
+- 表示名は、React の自動エスケープで表示する（`dangerouslySetInnerHTML` は使わない）。サーバー側でも、長さを検証する。
+- 運用: 古いルームの削除は、初期版では行わない（必要になれば、`pg_cron` で定期削除する）。匿名サインインの濫用は、Supabase Auth のレート制限に任せる。
+- リポジトリに含めない: `service_role` / secret key、`.env.local`。方針テストで、`service_role` の文字列がソースに含まれないことを検査する。
+
+### Supabase ダッシュボードでの設定（ユーザー作業）
+1. Authentication → Sign In / Providers で、**Allow anonymous sign-ins** を有効にする。
+2. SQL Editor で、`supabase/migrations/20261122000000_online_rooms.sql` の内容を実行する。
+3. Database → Publications（または SQL）で、`rooms` が `supabase_realtime` に含まれていることを確認する（マイグレーションが追加する）。
+4. Project URL と Publishable key を、`.env.local` と Vercel の環境変数に設定する。
+
 ## Data Models
 
 ### Database Schema
-**該当なし。** 本アプリはサーバーとデータベースを持たない（要件10）。保存するデータは、効果音設定のみで、`localStorage` のキー `connect4-3d:settings` に JSON で保存する。
+**ローカル対戦:** 該当なし。データベースは使わない。ブラウザに保存するのは、効果音設定（`localStorage` のキー `connect4-3d:settings`）のみ。
 
-将来オンライン対戦を導入する場合は、`GameState` と `Move`（JSON化可能）をそのままサーバーとのやり取りに使い、この時点でスキーマを設計する。
+**オンライン対戦:** Supabase の Postgres に、`public.rooms` テーブルを置く（定義は「Online Play」を参照）。ブラウザには、これに加えて、匿名認証のセッション（supabase-js が `localStorage` に保存）と、参加中のルーム ID（`connect4-3d:online-room`）を保存する。
+
+オンライン対戦のスキーマは、`GameState` / `Move` の考え方（手の履歴から盤面を導く）を踏襲している。
 
 ### File Storage Structure
 ```
@@ -204,6 +382,9 @@ lesson_app/
 ├── tsconfig.json
 ├── vite.config.ts
 ├── index.html
+├── supabase/
+│   └── migrations/           # オンライン対戦の SQL（テーブル・RLS・RPC・Realtime）
+├── .env.example              # 環境変数の見本（実際の値は .env.local。Git 管理外）
 ├── src/
 │   ├── core/                 # 純粋ロジック（three や DOM に依存しない）
 │   │   ├── types.ts
@@ -213,6 +394,7 @@ lesson_app/
 │   ├── app/                  # useGame, SettingsStore, ScoreBoard, App.tsx
 │   ├── render/               # BoardScene, Pillar, Disc（React Three Fiber）
 │   ├── ui/                   # HUD, ダイアログ, 遊び方（React コンポーネント）
+│   ├── online/               # オンライン対戦（RoomApi, SupabaseRoomApi, roomLogic, inviteLink, RoomStore, useOnlineGame）
 │   ├── audio/                # AudioService
 │   ├── styles/
 │   └── main.tsx
@@ -235,6 +417,18 @@ lesson_app/
 | 内部 | 想定外の例外 | 画面に「問題が発生しました。新しいゲームを開始してください」を出し、コンソールに記録する。盤面状態は不変のまま保つ |
 
 `core` は例外を投げず、`MoveResult` で結果を返す。
+
+### Error Handling（オンライン対戦）
+| 事象 | 対処 |
+|---|---|
+| 接続設定がない | オンラインを無効にし、理由を表示。ローカル対戦は影響なし |
+| 匿名認証に失敗 | 「接続に失敗しました。時間をおいて再度お試しください」。再試行ボタン |
+| ルームが存在しない / 満員 | 日本語のメッセージで、ロビーに戻す |
+| 相手の手番で着手 | 送信せず、「相手の手番です」を通知 |
+| 着手の送信に失敗（通信エラー） | 盤面は変えず、「送信に失敗しました。もう一度選んでください」を通知 |
+| Realtime が切断 | 「再接続中…」を表示し、自動で再接続。復帰時に `getRoom` で同期 |
+| サーバーが返した履歴が不正（再生に失敗） | 例外にせず、エラー画面（ルームを抜ける導線つき）を表示 |
+| 再読み込み | 保存したルーム ID から、`getRoom` で復帰。取得できなければ（参加者でなければ）、保存を消してロビーへ |
 
 ## Testing Strategy
 
@@ -263,3 +457,30 @@ lesson_app/
 - ブラウザの計測（Playwright + Performance API）で、回転と落下中の平均フレームレートが 30fps 以上であること。
 - ビルド成果物のサイズを確認し、初回表示が数秒以内となる範囲に収める。
 - 負荷（多数ユーザー）テストは、サーバーがないため対象外とする。
+
+### オンライン対戦のテスト
+
+**SQL の自動テスト（Vitest + PGlite）**
+- マイグレーションの SQL を、PGlite（WASM の Postgres）で実行する。Supabase 固有のもの（`auth.uid()`、`anon` / `authenticated` ロール）は、テスト用の代用品を用意し、`request.jwt.claim.sub` で、ユーザーを切り替える。
+- 勝敗判定: `game_private.is_win` に、`core` の `WIN_LINES`（全76ライン）を与え、すべて勝ちになること。3連続・相手の駒の混在は、勝ちにならないこと（`core` と同じ結果）。
+- `play_move`: 手番の検証、重力（柱の積み上がり）、満杯の拒否、範囲外の拒否、終了後の拒否。勝利で `status` / `winner` / 成績が更新されること。64手で引き分けになること（`core` のテストと同じ配置）。
+- `join_room`: 満員、存在しないコード、コードの正規化（小文字・空白）、同じユーザーの再参加が復帰になること。
+- `rematch`: 決着後のみ可能。先手が入れ替わり、手の履歴が空になり、成績が保持されること。
+- 権限（RLS）: 他人のルームは、SELECT しても 0 行。`insert` / `update` / `delete` の直接実行は、拒否される。他人は、`play_move` / `rematch` を呼べない。`anon` ロールは、関数を実行できない。
+
+**単体テスト**
+- `roomLogic`: 席と `PlayerId` の対応（先手がホスト / ゲストの両方）、`moves` からの盤面の再生、`isMyTurn`、不正な履歴の扱い、`normalizeCode`、柱の番号の変換。
+- `inviteLink`: 招待リンクの生成と解析（不正な値は無視）。
+- `SupabaseRoomApi`: Supabase クライアントを偽物に差し替え、RPC のエラーメッセージ → `RoomErrorCode` の変換、Realtime のチャンネル状態 → `ConnectionState` の変換。
+- `RoomStore`、環境変数がない場合の `isOnlineConfigured`。
+
+**結合テスト（偽の `RoomApi`）**
+- `useOnlineGame`: 作成 → 待機 → 相手の参加 → 着手 → 決着 → 再戦、の一連。重複した行（RPC の返り値と Realtime）の無視、1手増えた場合のみアニメーション、再接続時の同期、相手の手番での着手の拒否、エラー時の遷移。
+- 画面: ロビー、待機画面（コピー）、対局画面（オンライン用のバー、「1手戻す」が出ないこと）。
+
+**方針テストの更新**
+- 通信・保存先の API を使ってよい場所を、`src/online/`（と、既存の `SettingsStore`）に限定する。`service_role` / `secret` の文字列が、ソースに含まれないこと。`.env.local` が、`.gitignore` に含まれること。
+
+**E2E（Playwright、任意）**
+- Supabase の実プロジェクトに接続し、2つのブラウザコンテキストで、ルーム作成 → 招待リンクで参加 → 交互に着手 → 決着 → 再戦、を通す。環境変数（`VITE_SUPABASE_URL` など）が設定されている場合のみ実行し、なければスキップする。通常の `npm run test:e2e` には影響しない。
+
