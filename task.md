@@ -42,7 +42,7 @@
   - `src/core/index.ts` で公開APIをまとめる
   - _Requirements: 5.2, 11.1_
 
-- 🔴 6. useGame フック（最小版）
+- ✅️ 6. useGame フック（最小版）
   - `src/app/useGame.ts` を `useReducer` で実装する
   - 公開: `state`, `startGame`, `selectPillar`, `names`（既定名「プレイヤー1」「プレイヤー2」）
   - テスト（`renderHook`）: 着手から勝利までの流れ、終了後の入力が無視されること
