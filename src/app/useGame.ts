@@ -2,7 +2,8 @@ import { useCallback, useReducer, useRef } from 'react';
 import { applyMove, createGame } from '../core';
 import type { GameState, MoveError, PillarPos, PlayerSettings } from '../core';
 
-export const DEFAULT_NAMES: [string, string] = ['プレイヤー1', 'プレイヤー2'];
+export { DEFAULT_NAMES } from './defaults';
+import { DEFAULT_NAMES } from './defaults';
 
 interface GameModel {
   game: GameState;
