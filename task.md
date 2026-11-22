@@ -196,7 +196,7 @@
   - 権限: 他人のルームは読めない、直接の INSERT/UPDATE/DELETE は拒否、他人は RPC を呼べない、`anon` は実行できない
   - _Requirements: 15.2, 16.1, 16.3, 16.4, 18.2, 18.3, 18.4, 18.5, 19.3_
 
-- 🔴 28. オンライン対戦の型と純粋ロジック
+- ✅️ 28. オンライン対戦の型と純粋ロジック
   - `src/online/types.ts`: `RoomRow`, `RoomErrorCode`, `ConnectionState`, `RoomApi`, `OnlineView`（design.md のとおり）
   - `roomLogic.ts`: `rowToView`（`core` で再生。不正な履歴はエラーとして扱う）、席と `PlayerId` の対応、`isMyTurn`、`normalizeCode`、柱の番号の変換
   - `inviteLink.ts`: `buildInviteUrl` / `parseInviteCode`
